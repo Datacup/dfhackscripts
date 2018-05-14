@@ -40,30 +40,35 @@ end
 
 def markOrigin(ox, oy, oz)
     t = df.map_tile_at(ox, oy, oz)
-    s = t.shape_basic
-    #TODO: preseve designation:
-    #$originTile = t.designation # a global to store the original origin state
-    #puts "origin: #{$originTile}"
-    t.dig(:Default) if s == :Wall
+    if t then
+        s = t.shape_basic
+        #TODO: preseve designation:
+        #$originTile = t.designation # a global to store the original origin state
+        #puts "origin: #{$originTile}"
+        t.dig(:Default) if s == :Wall
+    end
 end
 
 def digAt(x, y, z, digMode = 'd')
-	
-	t = df.map_tile_at(x, y, z)
-    s = t.shape_basic
+    t = df.map_tile_at(x, y, z)
 
-	case digMode #from https://github.com/DFHack/scripts/blob/master/digfort.rb
-		when 'd'; t.dig(:Default) if s == :Wall
-		when 'u'; t.dig(:UpStair) if s == :Wall
-        when 'j'; t.dig(:DownStair) if s == :Wall or s == :Floor
-        when 'i'; t.dig(:UpDownStair) if s == :Wall
-        when 'h'; t.dig(:Channel) if s == :Wall or s == :Floor
-        when 'r'; t.dig(:Ramp) if s == :Wall
-        when 'x'; t.dig(:No)
-		else
-			puts "  Error: Unknown digtype"
-			throw :script_finished	
-	end
+    # check if the tile returned is valid, ignore if its not (out of bounds, air, etc)
+    if t then
+        s = t.shape_basic
+
+        case digMode #from https://github.com/DFHack/scripts/blob/master/digfort.rb
+            when 'd'; t.dig(:Default) if s == :Wall
+            when 'u'; t.dig(:UpStair) if s == :Wall
+            when 'j'; t.dig(:DownStair) if s == :Wall or s == :Floor
+            when 'i'; t.dig(:UpDownStair) if s == :Wall
+            when 'h'; t.dig(:Channel) if s == :Wall or s == :Floor
+            when 'r'; t.dig(:Ramp) if s == :Wall
+            when 'x'; t.dig(:No)
+            else
+                puts "  Error: Unknown digtype"
+                throw :script_finished	
+        end
+    end
 end
 
 
