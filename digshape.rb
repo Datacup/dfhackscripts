@@ -242,6 +242,12 @@ def digKeupoStair(x, y, z, depth)
     end
 end
 
+def getDigMode(digMode = 'd')
+    if ['d', 'u', 'j', 'i', 'h', 'r', 'x'].include? digMode then
+        return digMode
+    end
+    return 'd'
+end
 
 # script execution start
 
@@ -271,59 +277,32 @@ case command
 
         markOrigin($originx, $originy, $originz)
     when 'line'
-        targetx = df.cursor.x
-        targety = df.cursor.y
-        targetz = df.cursor.z
+        dig = getDigMode(argument1)
 
-        dig = 'd'
-        case argument1
-            when 'd'; dig = 'd'
-            when 'u'; dig = 'u'
-            when 'j'; dig = 'j'
-            when 'h'; dig = 'h'
-            when 'x'; dig = 'x'
-            else
-                dig = 'd'
-        end
-
-        if targetz == $originz then
-            drawLine($originx, $originy, $originz, targetx, targety, targetz, dig)
+        if df.cursor.z == $originz then
+            drawLine($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, dig)
         else
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
     when 'ellipse'
-        targetx = df.cursor.x
-        targety = df.cursor.y
-        targetz = df.cursor.z
-
         filled = false
-        dig = 'd'
-
         case argument1
             when 'filled'; filled = true
             when 'hollow'; filled = false
             when 'true'; filled = true
             when 'false'; filled = false
-            when 'd'; dig = 'd'
-            when 'u'; dig = 'u'
-            when 'j'; dig = 'j'
-            when 'h'; dig = 'h'
-            when 'x'; dig = 'x'
         end
 
-        case argument2
-            when 'd'; dig = 'd'
-            when 'u'; dig = 'u'
-            when 'j'; dig = 'j'
-            when 'h'; dig = 'h'
-            when 'x'; dig = 'x'
-            else
-                dig = 'd'
+        dig = getDigMode(argument1) #check argument 1 for dig instructions
+        if argument2 then # if argument 2 is present, look at that for dig instructions
+            dig = getDigMode(argument2)
         end
 
-        if targetz == $originz then
-            drawEllipse($originx, $originy, $originz, targetx, targety, targetz, filled, dig)
+        if df.cursor.z == $originz then
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled, dig)
+
+            # remove origin designation
             digAt($originx, $originy, $originz, 'x')
         else
             puts "  Error: origin and target must be on the same z level"
