@@ -143,8 +143,7 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
     #TODO: ellipses can be generated such that they do not extend all the way to the edge of the bounding box. A rounding issue converting to center+radius?
 
     # Avoid endless loop
-    if (xr < 1 || yr < 1)
-        end
+    return if (xr < 1 || yr < 1)
 
     # Init vars
     x = xr
