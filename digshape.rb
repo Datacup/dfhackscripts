@@ -1,24 +1,24 @@
 # dig shapes
 =begin
 
-flipshape
+digshape
 =======
 
 Commands that do not require a set origin:
 
     To dig a 3x3 sparse up-down stairway:
-      flipshape downstair depth
+      digshape downstair depth
 
 Commands that require an origin to be set:
 
     To set the origin for drawing:
-      flipshape origin
+      digshape origin
 
     To draw to the target point:
-      flipshape line
+      digshape line
     
     To draw an ellipse using the origin and target as a bounding box:
-      flipshape ellipse (filled? [default: false])
+      digshape ellipse (filled? [default: false])
 
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
@@ -27,10 +27,10 @@ TODO: mark origin should not change the digging designation, ellipse cleanup sho
 =end
 
 if not $script_args[0] then
-    puts "  To draw downstair: flipshape downstair depth"
-    puts "  To set origin: flipshape origin"
-    puts "  To draw line after origin is set: flipshape line"
-    puts "  To draw ellipse after origin is set (as bounding box): flipshape ellipse <filled:true|false>"
+    puts "  To draw downstair: digshape downstair depth"
+    puts "  To set origin: digshape origin"
+    puts "  To draw line after origin is set: digshape line"
+    puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
     puts "  All commands accept a one letter digging designation [dujihrx], or will default to 'd'"
     throw :script_finished
 end
