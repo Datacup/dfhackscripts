@@ -27,10 +27,11 @@ TODO: mark origin should not change the digging designation, ellipse cleanup sho
 =end
 
 if not $script_args[0] then
+    puts "  To draw downstair: flipshape downstair depth"
     puts "  To set origin: flipshape origin"
     puts "  To draw line after origin is set: flipshape line"
     puts "  To draw ellipse after origin is set (as bounding box): flipshape ellipse <filled:true|false>"
-    puts "  All commands accept a one letter digging designation [dujhrx], or will default to 'd'"
+    puts "  All commands accept a one letter digging designation [dujihrx], or will default to 'd'"
     throw :script_finished
 end
 
@@ -259,7 +260,6 @@ def digKeupoStair(x, y, z, depth)
     iz = z
 
     while iz >= z - (depth - 1) do
-        puts iz
         digAt(x, y, iz, 'i')
         digAt(x - 1, y + 1, iz, 'i')
         digAt(x - 1, y - 1, iz, 'i')
