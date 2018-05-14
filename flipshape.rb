@@ -4,18 +4,23 @@
 flipshape
 =======
 
-Currently only Bresenham's line algorithm
+Commands that do not require a set origin:
 
-To set the origin for drawing:
-  flipshape origin
+    To dig a 3x3 sparse up-down stairway:
+      flipshape downstair depth
 
-To draw to the target point:
-  flipshape line
-  
-To draw an ellipse using the origin and target as a bounding box:
-  flipshape ellipse (filled? [default: false])
-  
-all commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
+Commands that require an origin to be set:
+
+    To set the origin for drawing:
+      flipshape origin
+
+    To draw to the target point:
+      flipshape line
+    
+    To draw an ellipse using the origin and target as a bounding box:
+      flipshape ellipse (filled? [default: false])
+
+    All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
 TODO: mark origin should not change the digging designation, ellipse cleanup should restore not clear it.
 
@@ -250,6 +255,19 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
 	
 end
 
+def digKeupoStair(x, y, z, depth)
+    iz = z
+
+    while iz >= z - (depth - 1) do
+        puts iz
+        digAt(x, y, iz, 'i')
+        digAt(x - 1, y + 1, iz, 'i')
+        digAt(x - 1, y - 1, iz, 'i')
+        digAt(x + 1, y + 1, iz, 'i')
+        digAt(x + 1, y - 1, iz, 'i')
+        iz -= 1
+    end
+end
 
 
 case command
@@ -318,7 +336,19 @@ case command
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
-
+    when 'downstair'
+        if not argument1 then
+            puts "  Must supply a depth parameter"
+            throw :script_finished
+        else
+            depth = argument1.to_i
+            if depth <= 0 then
+                puts "  Depth must be an integer greater than zero"
+                throw :script_finished
+            else
+                digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth)
+            end
+        end
     else
         puts "  Error: Invalid command"
         throw :script_finished
