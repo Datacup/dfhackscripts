@@ -142,123 +142,116 @@ def drawLine(x0, y0, z0, x1, y1, z1, digMode = 'd')
     end
 end
 
-
-
 def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
-	# A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf (https://www.dropbox.com/s/3q89g566u115g3q/belipse.pdf?dl=0)
-	# also adapted from https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs used under the MIT license 
-	
-	
-	xl = [x0, x1].min # find left edge
-	xr = [x0, x1].max # find right edge
-	yb = [y0, y1].min # find lower edge
-	yt = [y0, y1].max # find top edge
-	
-	# find radius
-	xr = ((xr - xl) / 2).ceil
-	yr = ((yt - yb) / 2).ceil
-	
-	# find center
-	xc = xl + xr 
-	yc = yb + yr
-	
-	#TODO: ellipses can be generated such that they do not extend all the way to the edge of the bounding box. A rounding issue converting to center+radius?
+    # A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf (https://www.dropbox.com/s/3q89g566u115g3q/belipse.pdf?dl=0)
+    # also adapted from https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs used under the MIT license 
 
-	# Avoid endless loop
+    xl = [x0, x1].min # find left edge
+    xr = [x0, x1].max # find right edge
+    yb = [y0, y1].min # find lower edge
+    yt = [y0, y1].max # find top edge
+
+    # find radius
+    xr = ((xr - xl) / 2).ceil
+    yr = ((yt - yb) / 2).ceil
+
+    # find center
+    xc = xl + xr 
+    yc = yb + yr
+
+    #TODO: ellipses can be generated such that they do not extend all the way to the edge of the bounding box. A rounding issue converting to center+radius?
+
+    # Avoid endless loop
     if (xr < 1 || yr < 1)
-		end
-	
+        end
+
     # Init vars
-	x = xr
-	y = 0
-	xrSqTwo = xr * xr * 2
-	yrSqTwo = yr * yr * 2
-	xChg = yr * yr * (1 - (xr * 2))
-	yChg = xr * xr
-	err = 0
-	xStopping = yrSqTwo * xr
-	yStopping = 0
+    x = xr
+    y = 0
+    xrSqTwo = xr * xr * 2
+    yrSqTwo = yr * yr * 2
+    xChg = yr * yr * (1 - (xr * 2))
+    yChg = xr * xr
+    err = 0
+    xStopping = yrSqTwo * xr
+    yStopping = 0
 
     # Draw first set of points counter clockwise where tangent line slope > -1.
-	while xStopping >= yStopping
-		# Draw 4 quadrant points at once
-		if filled then
-			#filled ellipse, dig a line across.
-			xi = 2 * x # loop variable
-			while xi > 0
-				digAt(xc - x + xi, yc + y, z0, digMode)
-				digAt(xc - x + xi, yc - y, z0, digMode)
-				xi -= 1
-			end
-		else
-			#hollow ellipse
-			digAt(xc + x, yc + y, z0, digMode)
-			digAt(xc - x, yc + y, z0, digMode)
-			digAt(xc - x, yc - y, z0, digMode)
-			digAt(xc + x, yc - y, z0, digMode)
-		end
-		
+    while xStopping >= yStopping
+        # Draw 4 quadrant points at once
+        if filled then
+            #filled ellipse, dig a line across.
+            xi = 2 * x # loop variable
+            while xi > 0
+                digAt(xc - x + xi, yc + y, z0, digMode)
+                digAt(xc - x + xi, yc - y, z0, digMode)
+                xi -= 1
+            end
+        else
+            #hollow ellipse
+            digAt(xc + x, yc + y, z0, digMode)
+            digAt(xc - x, yc + y, z0, digMode)
+            digAt(xc - x, yc - y, z0, digMode)
+            digAt(xc + x, yc - y, z0, digMode)
+        end
 
-		y+= 1
-		yStopping += xrSqTwo
-		err += yChg
-		yChg += xrSqTwo
-		
-		if ((xChg + (err * 2)) > 0) then
-			x-= 1
-			xStopping -= yrSqTwo
-			err += xChg
-			xChg += yrSqTwo
-		end
-	end
-		
-	# Draw second set of points clockwise where tangent line slope < -1.
+        y+= 1
+        yStopping += xrSqTwo
+        err += yChg
+        yChg += xrSqTwo
 
-	# ReInit vars
-	x = 0
-	y = yr
-	xChg = yr * yr
-	yChg = xr * xr * (1 - (yr *2))
-	err = 0
-	xStopping = 0
-	yStopping = xrSqTwo * yr
+        if ((xChg + (err * 2)) > 0) then
+            x-= 1
+            xStopping -= yrSqTwo
+            err += xChg
+            xChg += yrSqTwo
+        end
+    end
 
-	while (xStopping <= yStopping)
-		# Draw 4 quadrant points at once
-		if filled then
-			#filled ellipse, dig a line across.
-			xi = 2 * x # loop variable
-			while xi > 0
-				digAt(xc - x + xi, yc + y, z0, digMode)
-				digAt(xc - x + xi, yc - y, z0, digMode)
-				xi -= 1
-			end
-		else
-			#hollow ellipse
-			digAt(xc + x, yc + y, z0, digMode)
-			digAt(xc - x, yc + y, z0, digMode)
-			digAt(xc - x, yc - y, z0, digMode)
-			digAt(xc + x, yc - y, z0, digMode)
-		end
+    # Draw second set of points clockwise where tangent line slope < -1.
 
-		x+= 1
-		xStopping += yrSqTwo
-		err += xChg
-		xChg += yrSqTwo
-		if ((yChg + (err * 2)) > 0) then
-			y-= 1
-			yStopping -= xrSqTwo
-			err += yChg
-			yChg += xrSqTwo
-		end
-	end
-  
-	
+    # ReInit vars
+    x = 0
+    y = yr
+    xChg = yr * yr
+    yChg = xr * xr * (1 - (yr *2))
+    err = 0
+    xStopping = 0
+    yStopping = xrSqTwo * yr
+
+    while (xStopping <= yStopping)
+        # Draw 4 quadrant points at once
+        if filled then
+            #filled ellipse, dig a line across.
+            xi = 2 * x # loop variable
+            while xi > 0
+                digAt(xc - x + xi, yc + y, z0, digMode)
+                digAt(xc - x + xi, yc - y, z0, digMode)
+                xi -= 1
+            end
+        else
+            #hollow ellipse
+            digAt(xc + x, yc + y, z0, digMode)
+            digAt(xc - x, yc + y, z0, digMode)
+            digAt(xc - x, yc - y, z0, digMode)
+            digAt(xc + x, yc - y, z0, digMode)
+        end
+
+        x+= 1
+        xStopping += yrSqTwo
+        err += xChg
+        xChg += yrSqTwo
+        if ((yChg + (err * 2)) > 0) then
+            y-= 1
+            yStopping -= xrSqTwo
+            err += yChg
+            yChg += xrSqTwo
+        end
+    end
 end
 
 def digKeupoStair(x, y, z, depth)
     iz = z
-
     while iz >= z - (depth - 1) do
         digAt(x, y, iz, 'i')
         digAt(x - 1, y + 1, iz, 'i')
@@ -281,17 +274,17 @@ case command
         targetx = df.cursor.x
         targety = df.cursor.y
         targetz = df.cursor.z
-        
+
         dig = 'd'
         case argument1
-			when 'd'; dig = 'd'
-			when 'u'; dig = 'u'
-			when 'j'; dig = 'j'
-			when 'h'; dig = 'h'
-			when 'x'; dig = 'x'
-			else
-				dig = 'd'
-		end
+            when 'd'; dig = 'd'
+            when 'u'; dig = 'u'
+            when 'j'; dig = 'j'
+            when 'h'; dig = 'h'
+            when 'x'; dig = 'x'
+            else
+                dig = 'd'
+        end
 
         if targetz == $originz then
             drawLine($originx, $originy, $originz, targetx, targety, targetz, dig)
@@ -299,35 +292,35 @@ case command
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
-	when 'ellipse'
-		targetx = df.cursor.x
+    when 'ellipse'
+        targetx = df.cursor.x
         targety = df.cursor.y
         targetz = df.cursor.z
-        
+
         filled = false
         dig = 'd'
-        
+
         case argument1
-			when 'filled'; filled = true
-			when 'hollow'; filled = false
-			when 'true'; filled = true
-			when 'false'; filled = false
-			when 'd'; dig = 'd'
-			when 'u'; dig = 'u'
-			when 'j'; dig = 'j'
-			when 'h'; dig = 'h'
-			when 'x'; dig = 'x'
-		end
-		
-		case argument2
-			when 'd'; dig = 'd'
-			when 'u'; dig = 'u'
-			when 'j'; dig = 'j'
-			when 'h'; dig = 'h'
-			when 'x'; dig = 'x'
-			else
-				dig = 'd'
-		end
+            when 'filled'; filled = true
+            when 'hollow'; filled = false
+            when 'true'; filled = true
+            when 'false'; filled = false
+            when 'd'; dig = 'd'
+            when 'u'; dig = 'u'
+            when 'j'; dig = 'j'
+            when 'h'; dig = 'h'
+            when 'x'; dig = 'x'
+        end
+
+        case argument2
+            when 'd'; dig = 'd'
+            when 'u'; dig = 'u'
+            when 'j'; dig = 'j'
+            when 'h'; dig = 'h'
+            when 'x'; dig = 'x'
+            else
+                dig = 'd'
+        end
 
         if targetz == $originz then
             drawEllipse($originx, $originy, $originz, targetx, targety, targetz, filled, dig)
