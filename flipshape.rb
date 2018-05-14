@@ -180,8 +180,8 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
 			#filled ellipse, dig a line across.
 			xi = 2 * x # loop variable
 			while xi > 0
-				digAt (xc - x + xi, yc + y, z0, digMode)
-				digAt (xc - x + xi, yc - y, z0, digMode)
+				digAt(xc - x + xi, yc + y, z0, digMode)
+				digAt(xc - x + xi, yc - y, z0, digMode)
 				xi -= 1
 			end
 		else
@@ -223,8 +223,8 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
 			#filled ellipse, dig a line across.
 			xi = 2 * x # loop variable
 			while xi > 0
-				digAt (xc - x + xi, yc + y, z0, digMode)
-				digAt (xc - x + xi, yc - y, z0, digMode)
+				digAt(xc - x + xi, yc + y, z0, digMode)
+				digAt(xc - x + xi, yc - y, z0, digMode)
 				xi -= 1
 			end
 		else
