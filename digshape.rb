@@ -26,24 +26,6 @@ TODO: mark origin should not change the digging designation, ellipse cleanup sho
 
 =end
 
-if not $script_args[0] then
-    puts "  To draw downstair: digshape downstair depth"
-    puts "  To set origin: digshape origin"
-    puts "  To draw line after origin is set: digshape line"
-    puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
-    puts "  All commands accept a one letter digging designation [dujihrx], or will default to 'd'"
-    throw :script_finished
-end
-
-command = $script_args[0]
-argument1 = $script_args[1]
-argument2 = $script_args[2]
-
-if df.cursor.x == -30000 then
-    puts "  Error: cursor must be on map"
-    throw :script_finished
-end
-
 def markOrigin(ox, oy, oz)
     t = df.map_tile_at(ox, oy, oz)
     if t then
@@ -76,7 +58,6 @@ def digAt(x, y, z, digMode = 'd')
         end
     end
 end
-
 
 # https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 def drawLineLow(x0, y0, z0, x1, y1, z1, digMode = 'd')
@@ -262,6 +243,26 @@ def digKeupoStair(x, y, z, depth)
     end
 end
 
+
+# script execution start
+
+if not $script_args[0] then
+    puts "  To draw downstair: digshape downstair depth"
+    puts "  To set origin: digshape origin"
+    puts "  To draw line after origin is set: digshape line"
+    puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
+    puts "  All commands accept a one letter digging designation [dujihrx], or will default to 'd'"
+    throw :script_finished
+end
+
+command = $script_args[0]
+argument1 = $script_args[1]
+argument2 = $script_args[2]
+
+if df.cursor.x == -30000 then
+    puts "  Error: cursor must be on map"
+    throw :script_finished
+end
 
 case command
     when 'origin'
