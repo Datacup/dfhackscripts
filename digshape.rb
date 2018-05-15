@@ -7,7 +7,7 @@ digshape
 Commands that do not require a set origin:
 
     To dig a 3x3 sparse up-down stairway:
-      digshape downstair depth
+      digshape downstair <depth>
 
 Commands that require an origin to be set:
 
@@ -19,6 +19,9 @@ Commands that require an origin to be set:
     
     To draw an ellipse using the origin and target as a bounding box:
       digshape ellipse (filled? [default: false])
+	  
+	To draw a polygon using the origin as the center and the cursor as the radius|apothem (radius)
+	  digshape polygon <sides> [radius|apothem] [digMode]
 
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
@@ -232,6 +235,11 @@ end
 
 def digKeupoStair(x, y, z, depth)
     iz = z
+	digAt(x, y, iz, 'j')
+    digAt(x - 1, y + 1, iz, 'j')
+	digAt(x - 1, y - 1, iz, 'j')
+    digAt(x + 1, y + 1, iz, 'j')
+    digAt(x + 1, y - 1, iz, 'j')
     while iz >= z - (depth - 1) do
         digAt(x, y, iz, 'i')
         digAt(x - 1, y + 1, iz, 'i')
@@ -249,33 +257,35 @@ def getDigMode(digMode = 'd')
     return 'd'
 end
 
-def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, digMode = 'd')
-    if n < 3 then
-        n = 3
-    end
+def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, digMode = 'd', apothem=false)
+   # if n < 3 then
+   #     n = 3
+   # end
+   # if you dig a 2-gon (aka a line) it always passes through the origin so it's still convienient / useful
 
     xOffset = x1 - x0
     yOffset = y1 - y0
 
     radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
 
-    angle = 2 * Math.atan((y1.to_f - y0.to_f) / (x1.to_f - y0.to_f))
-
-    if n % 2 == 1 then
-        angle -= Math::PI / 2.0
-    end
+	angle=Math::atan2(yOffset/radius,xOffset/radius)
+	angleIncrement = (Math::PI*2)/n;
 
     lastX = x1
     lastY = y1
 
+	if apothem==true then #cursor is at middle of a segment instead of vertex
+		angle+=angleIncrement/2
+		radius=radius/Math.cos(Math::PI/n)
+	end
+	
     for i in 0..n
-        thisX = (Math.sin(2 * Math::PI * i.to_f / n.to_f - angle) * radius + x0).round
-        thisY = (Math.cos(2 * Math::PI * i.to_f / n.to_f - angle) * radius + y0).round
-
+		thisX = (x0 + (Math.cos(angle)*radius)).round
+		thisY = (y0 + (Math.sin(angle)*radius)).round
         if (i > 0) then
             drawLine(lastX, lastY, z0, thisX, thisY, z0, digMode)
         end
-
+		angle += angleIncrement
         lastX = thisX
         lastY = thisY
     end
@@ -289,12 +299,14 @@ if not $script_args[0] then
     puts "  To draw line after origin is set: digshape line"
     puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
     puts "  All commands accept a one letter digging designation [dujihrx], or will default to 'd'"
+	#todo: someone add message for polygon
     throw :script_finished
 end
 
 command = $script_args[0]
 argument1 = $script_args[1]
 argument2 = $script_args[2]
+argument3 = $script_args[3]
 
 if df.cursor.x == -30000 then
     puts "  Error: cursor must be on map"
@@ -324,6 +336,10 @@ case command
             when 'hollow'; filled = false
             when 'true'; filled = true
             when 'false'; filled = false
+			when 't'; filled = true
+			when 'f'; filled = false
+			when 'y'; filled = true
+			when 'n'; filled = false
         end
 
         dig = getDigMode(argument1) #check argument 1 for dig instructions
@@ -346,10 +362,20 @@ case command
             throw :script_finished
         else
             n = argument1.to_i
-            dig = getDigMode(argument2)
-
+            dig = getDigMode(argument3)
+			apothem=false;
+			case argument2
+				when 'apothem'; apothem=true
+				when 'radius'; apothem=false
+				when 'a'; apothem=true
+				when 'r'; apothem=false
+				when 't'; apothem=true
+				when 'f'; apothem=false
+				when 'y'; apothem=true
+				when 'n'; apothem=false
+			end
             if df.cursor.z == $originz then
-                drawPolygon($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, dig)
+                drawPolygon($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, dig, apothem)
             else
                 puts "  Error: origin and target must be on the same z level"
                 throw :script_finished
