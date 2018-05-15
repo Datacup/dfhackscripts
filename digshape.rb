@@ -134,6 +134,11 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
     xr = [x0, x1].max # find right edge
     yb = [y0, y1].min # find lower edge
     yt = [y0, y1].max # find top edge
+    
+    #determine if this is an even distance ellipse, which will require special handling as the center is on the vertex of four adjacent squares rather than inside.
+    #we will use these to offset part of the ellipse drawing
+	if (xl - xr).odd? then xeven = 1 else xeven = 0 end
+	if (yt - yb).odd? then yeven = 1 else yeven = 0 end
 
     # find radius
     xr = ((xr - xl) / 2).ceil
@@ -142,8 +147,6 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
     # find center
     xc = xl + xr 
     yc = yb + yr
-
-    #TODO: ellipses can be generated such that they do not extend all the way to the edge of the bounding box. A rounding issue converting to center+radius?
 
     # Avoid endless loop
     return if (xr < 1 || yr < 1)
@@ -164,18 +167,18 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
         # Draw 4 quadrant points at once
         if filled then
             #filled ellipse, dig a line across.
-            xi = 2 * x # loop variable
-            while xi > 0
-                digAt(xc - x + xi, yc + y, z0, digMode)
+            xi = 2 * x  + xeven# loop variable
+            while xi >= 0
+                digAt(xc - x + xi, yc + y + yeven, z0, digMode)
                 digAt(xc - x + xi, yc - y, z0, digMode)
                 xi -= 1
             end
         else
             #hollow ellipse
-            digAt(xc + x, yc + y, z0, digMode)
-            digAt(xc - x, yc + y, z0, digMode)
+            digAt(xc + x + xeven, yc + y + yeven, z0, digMode)
+            digAt(xc - x, yc + y + yeven, z0, digMode)
             digAt(xc - x, yc - y, z0, digMode)
-            digAt(xc + x, yc - y, z0, digMode)
+            digAt(xc + x + xeven, yc - y, z0, digMode)
         end
 
         y+= 1
@@ -206,18 +209,18 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
         # Draw 4 quadrant points at once
         if filled then
             #filled ellipse, dig a line across.
-            xi = 2 * x # loop variable
-            while xi > 0
-                digAt(xc - x + xi, yc + y, z0, digMode)
+            xi = 2 * x + xeven # loop variable
+            while xi >= 0
+                digAt(xc - x + xi, yc + y + yeven, z0, digMode)
                 digAt(xc - x + xi, yc - y, z0, digMode)
                 xi -= 1
             end
         else
             #hollow ellipse
-            digAt(xc + x, yc + y, z0, digMode)
-            digAt(xc - x, yc + y, z0, digMode)
+            digAt(xc + x + xeven, yc + y + yeven, z0, digMode)
+            digAt(xc - x, yc + y + yeven, z0, digMode)
             digAt(xc - x, yc - y, z0, digMode)
-            digAt(xc + x, yc - y, z0, digMode)
+            digAt(xc + x + xeven, yc - y, z0, digMode)
         end
 
         x+= 1
