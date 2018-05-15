@@ -326,7 +326,7 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw line after origin is set: digshape line"
     puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
 	puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
-	puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segement(apothem): digshape polygon <# sides> apothem"
+	puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
 	puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
     puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
