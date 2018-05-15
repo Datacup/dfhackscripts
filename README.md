@@ -7,6 +7,7 @@ Some dfhack scripts from friends of keupo on twitch
 - flipvine
 - Qvatch
 - keupo
+- flavorstreet
 
 # Resources of interest
 
