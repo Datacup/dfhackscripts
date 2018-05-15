@@ -1,6 +1,38 @@
 # Some DFHack scripts
 
 Some dfhack scripts from friends of keupo on twitch
+# Usage
+*note*: any of the drawing commands can be appended with a digging designation [dujihrx] at the end, or will default to 'd'
+
+for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs with the mark as the center and the cursor as a vertex on the star
+
+## in-game help
+`digshape ?`
+
+## set mark
+	digshape origin
+
+## draw a line
+	digshape line
+*from cursor to mark*
+
+## draw an ellipse
+	digshape ellipse
+*cursor and mark as bounding box*
+
+## draw a polygon with cursor as vertex
+	digshape polygon <n sides>
+*mark as center and cursor as a vertex*
+
+## draw a polygon with cursor as apothem
+	digshape polygon <n sides> apothem
+*mark as center and cursor as a midpoint*
+
+## draw a star polygon
+	digshape star <n sides> [skip=2]
+in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbol)
+*mark as center and cursor as a vertex*
+
 
 # Contributors
 
