@@ -260,7 +260,7 @@ def getDigMode(digMode = 'd')
     return 'd'
 end
 
-def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, digMode = 'd', apothem=false)
+def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, apothem=false, digMode = 'd')
    # if n < 3 then
    #     n = 3
    # end
@@ -294,15 +294,41 @@ def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, digMode = 'd', apothem=false)
     end
 end
 
+def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
+
+    xOffset = x1 - x0
+    yOffset = y1 - y0
+
+    radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
+
+	angle=Math::atan2(yOffset/radius,xOffset/radius)
+	angleIncrement = (Math::PI*2)/n;
+
+    lastX = x1
+    lastY = y1
+	
+    for i in 0..n
+		thisX = (x0 + (Math.cos(angle)*radius)).round
+		thisY = (y0 + (Math.sin(angle)*radius)).round
+		thatX = (x0 + (Math.cos(angle+(angleIncrement*skip))*radius)).round
+		thatY = (y0 + (Math.sin(angle+(angleIncrement*skip))*radius)).round
+        if (i > 0) then
+            drawLine(thatX, thatY, z0, thisX, thisY, z0, digMode)
+        end
+		angle += angleIncrement
+    end
+end
 # script execution start
 
-if not $script_args[0] then
+if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw downstair: digshape downstair depth"
     puts "  To set origin: digshape origin"
     puts "  To draw line after origin is set: digshape line"
     puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
-    puts "  All commands accept a one letter digging designation [dujihrx], or will default to 'd'"
-	#todo: someone add message for polygon
+	puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
+	puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segement(apothem): digshape polygon <# sides> apothem"
+	puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
+    puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
 
@@ -314,6 +340,12 @@ argument3 = $script_args[3]
 if df.cursor.x == -30000 then
     puts "  Error: cursor must be on map"
     throw :script_finished
+end
+
+if command=="o" or command=="set" then #alias
+	command=="origin"
+elsif command=="keupo" or command=="stairs" or command=="downstairs" then
+	command=="downstair"
 end
 
 case command
@@ -365,7 +397,10 @@ case command
             throw :script_finished
         else
             n = argument1.to_i
-            dig = getDigMode(argument3)
+			dig = getDigMode(argument2)
+			if argument3 then
+				dig = getDigMode(argument3)	
+			end
 			apothem=false;
 			case argument2
 				when 'apothem'; apothem=true
@@ -378,7 +413,26 @@ case command
 				when 'n'; apothem=false
 			end
             if df.cursor.z == $originz then
-                drawPolygon($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, dig, apothem)
+                drawPolygon($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, apothem, dig)
+            else
+                puts "  Error: origin and target must be on the same z level"
+                throw :script_finished
+            end
+        end
+	when 'star' # star N [SKIP=2] [DIGMODE]
+        if not argument1 then
+            puts "  Must supply a star n-sides parameter"
+            throw :script_finished
+        else
+			dig = getDigMode(argument2)
+			if argument3 then
+				dig = getDigMode(argument3)	
+			end
+            n = argument1.to_i
+			skip = Integer(argument2) rescue 2
+
+            if df.cursor.z == $originz then
+                drawStar($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, skip, dig)
             else
                 puts "  Error: origin and target must be on the same z level"
                 throw :script_finished
