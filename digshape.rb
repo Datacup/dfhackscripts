@@ -249,6 +249,38 @@ def getDigMode(digMode = 'd')
     return 'd'
 end
 
+def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, digMode = 'd')
+    if n < 3 then
+        n = 3
+    end
+
+    xOffset = x1 - x0
+    yOffset = y1 - y0
+
+    radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
+
+    angle = 2 * Math.atan((y1.to_f - y0.to_f) / (x1.to_f - y0.to_f))
+
+    if n % 2 == 1 then
+        angle -= Math::PI / 2.0
+    end
+
+    lastX = x1
+    lastY = y1
+
+    for i in 0..n
+        thisX = (Math.sin(2 * Math::PI * i.to_f / n.to_f - angle) * radius + x0).round
+        thisY = (Math.cos(2 * Math::PI * i.to_f / n.to_f - angle) * radius + y0).round
+
+        if (i > 0) then
+            drawLine(lastX, lastY, z0, thisX, thisY, z0, digMode)
+        end
+
+        lastX = thisX
+        lastY = thisY
+    end
+end
+
 # script execution start
 
 if not $script_args[0] then
@@ -307,6 +339,21 @@ case command
         else
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
+        end
+    when 'polygon'
+        if not argument1 then
+            puts "  Must supply a polygon n-sides parameter"
+            throw :script_finished
+        else
+            n = argument1.to_i
+            dig = getDigMode(argument2)
+
+            if df.cursor.z == $originz then
+                drawPolygon($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, dig)
+            else
+                puts "  Error: origin and target must be on the same z level"
+                throw :script_finished
+            end
         end
     when 'downstair'
         if not argument1 then
