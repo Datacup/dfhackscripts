@@ -126,14 +126,14 @@ def drawLine(x0, y0, z0, x1, y1, z1, digMode = 'd')
     end
 end
 
-def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
+def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, digMode = 'd', mode = 'bbox')
     # A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf (https://www.dropbox.com/s/3q89g566u115g3q/belipse.pdf?dl=0)
     # also adapted from https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs used under the MIT license 
 
     xl = [x0, x1].min # find left edge
     xr = [x0, x1].max # find right edge
     yb = [y0, y1].min # find lower edge
-    yt = [y0, y1].max # find top edge
+    yt = [y0, y1].max # find top edge 
     
     #determine if this is an even distance ellipse, which will require special handling as the center is on the vertex of four adjacent squares rather than inside.
     #we will use these to offset part of the ellipse drawing
@@ -141,25 +141,69 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
 	if (yt - yb).odd? then yeven = 1 else yeven = 0 end
 
     # find radius
-    xr = ((xr - xl) / 2).ceil
-    yr = ((yt - yb) / 2).ceil
+    xrad = ((xr - xl) / 2).ceil
+    yrad = ((yt - yb) / 2).ceil
 
     # find center
-    xc = xl + xr 
-    yc = yb + yr
+    xc = xl + xrad 
+    yc = yb + yrad
+    
+     if mode == 'diameter' then
+		if (xl != xr) && (yt != yb) then
+			puts "  Error: Designate a horizontal or vertical diameter"
+			throw :script_finished
+			end
+		
+		if (xl == xr) then
+			#If x's equal, this is a vertical designation
+			xl -= yrad
+			xr += yrad	
+			xrad = yrad
+			else
+				yt += xrad
+				yb -= xrad
+				yrad = xrad
+			end
+		
+		end
+	
+	if mode == 'axis' then
+		if (xl != xr) && (yt != yb) then
+			puts "  Error: Designate a horizontal or vertical diameter"
+			throw :script_finished
+			end
+		
+		if (xl == xr) then
+			#If x's equal, this is a vertical designation origin--major
+			#find true x components
+			xrad = (x2 - xl).abs
+			xtemp = xl
+			xl = xtemp + xrad
+			xr = xtemp - xrad
+			
+			else
+				#Horizontal origin--major
+				#find true y components
+				yrad = (y2 - yt).abs
+				ytemp = yt
+				yt = ytemp + yrad
+				yb = ytemp - yrad
+			end
+		end
+
 
     # Avoid endless loop
-    return if (xr < 1 || yr < 1)
+    return if (xrad < 1 || yrad < 1)
 
     # Init vars
-    x = xr
+    x = xrad
     y = 0
-    xrSqTwo = xr * xr * 2
-    yrSqTwo = yr * yr * 2
-    xChg = yr * yr * (1 - (xr * 2))
-    yChg = xr * xr
+    xrSqTwo = xrad * xrad * 2
+    yrSqTwo = yrad * yrad * 2
+    xChg = yrad * yrad * (1 - (xrad * 2))
+    yChg = xrad * xrad
     err = 0
-    xStopping = yrSqTwo * xr
+    xStopping = yrSqTwo * xrad
     yStopping = 0
 
     # Draw first set of points counter clockwise where tangent line slope > -1.
@@ -198,12 +242,12 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, filled = false, digMode = 'd')
 
     # ReInit vars
     x = 0
-    y = yr
-    xChg = yr * yr
-    yChg = xr * xr * (1 - (yr *2))
+    y = yrad
+    xChg = yrad * yrad
+    yChg = xrad * xrad * (1 - (yrad *2))
     err = 0
     xStopping = 0
-    yStopping = xrSqTwo * yr
+    yStopping = xrSqTwo * yrad
 
     while (xStopping <= yStopping)
         # Draw 4 quadrant points at once
@@ -351,7 +395,7 @@ case command
         end
 
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled, dig)
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode=dig)
 
             # remove origin designation
             digAt($originx, $originy, $originz, 'x')
@@ -359,6 +403,33 @@ case command
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
+    when 'circle2p'
+		if df.cursor.z == $originz then
+			drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode = 'd', mode = 'diameter')	
+			else
+				puts "  Error: origin and target must be on the same z level"
+				throw :script_finished
+			end
+	when 'major'
+		#used to mark the end point of the major diameter
+		#$major = df.cursor
+		$majorx = df.cursor.x
+		$majory = df.cursor.y
+		$majorz = df.cursor.z		
+		if df.cursor.z == $originz then
+			markOrigin($majorx, $majory, $majorz)
+			puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
+			else
+				puts "  Error: origin and target must be on the same z level"
+				throw :script_finished
+			end
+	when 'ellipse3p'
+		if df.cursor.z == $originz then
+			drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = false, digMode = 'd', mode = 'axis')
+			else
+				puts "  Error: origin and target must be on the same z level"
+				throw :script_finished
+			end
     when 'polygon'
         if not argument1 then
             puts "  Must supply a polygon n-sides parameter"
