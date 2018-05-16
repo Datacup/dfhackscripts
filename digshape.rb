@@ -343,9 +343,9 @@ if df.cursor.x == -30000 then
 end
 
 if command=="o" or command=="set" then #alias
-	command=="origin"
+	command="origin"
 elsif command=="keupo" or command=="stairs" or command=="downstairs" then
-	command=="downstair"
+	command="downstair"
 end
 
 case command
