@@ -422,7 +422,7 @@ case command
         end
 
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode=dig)
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=dig, mode = 'bbox')
 
             # remove origin designation
             digAt($originx, $originy, $originz, 'x')
@@ -431,32 +431,32 @@ case command
             throw :script_finished
         end
     when 'circle2p'
-        if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode = 'd', mode = 'diameter')	
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
-            end
-    when 'major'
-        #used to mark the end point of the major diameter
-        #$major = df.cursor
-        $majorx = df.cursor.x
-        $majory = df.cursor.y
-        $majorz = df.cursor.z		
-        if df.cursor.z == $originz then
-            markOrigin($majorx, $majory, $majorz)
-            puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
-            end
-    when 'ellipse3p'
-        if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = false, digMode = 'd', mode = 'axis')
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
-            end
+		if df.cursor.z == $originz then
+			drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=false, digMode = 'd', mode = 'diameter')	
+			else
+				puts "  Error: origin and target must be on the same z level"
+				throw :script_finished
+			end
+	when 'major'
+		#used to mark the end point of the major diameter
+		#$major = df.cursor
+		$majorx = df.cursor.x
+		$majory = df.cursor.y
+		$majorz = df.cursor.z		
+		if df.cursor.z == $originz then
+			markOrigin($majorx, $majory, $majorz)
+			puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
+			else
+				puts "  Error: origin and target must be on the same z level"
+				throw :script_finished
+			end
+	when 'ellipse3p'
+		if df.cursor.z == $originz then
+			drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = false, digMode = 'd', mode = 'axis')
+			else
+				puts "  Error: origin and target must be on the same z level"
+				throw :script_finished
+			end
     when 'polygon'
         if not argument1 then
             puts "  Must supply a polygon n-sides parameter"
