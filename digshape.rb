@@ -7,21 +7,21 @@ digshape
 Commands that do not require a set origin:
 
     To dig a 3x3 sparse up-down stairway:
-      digshape downstair <depth>
+        digshape downstair <depth>
 
 Commands that require an origin to be set:
 
     To set the origin for drawing:
-      digshape origin
+        digshape origin
 
     To draw to the target point:
-      digshape line
+        digshape line
     
     To draw an ellipse using the origin and target as a bounding box:
-      digshape ellipse (filled? [default: false])
-	  
-	To draw a polygon using the origin as the center and the cursor as the radius|apothem (radius)
-	  digshape polygon <sides> [radius|apothem] [digMode]
+        digshape ellipse (filled? [default: false])
+      
+    To draw a polygon using the origin as the center and the cursor as the radius|apothem (radius)
+        digshape polygon <sides> [radius|apothem] [digMode]
 
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
@@ -137,8 +137,8 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
     
     #determine if this is an even distance ellipse, which will require special handling as the center is on the vertex of four adjacent squares rather than inside.
     #we will use these to offset part of the ellipse drawing
-	if (xl - xr).odd? then xeven = 1 else xeven = 0 end
-	if (yt - yb).odd? then yeven = 1 else yeven = 0 end
+    if (xl - xr).odd? then xeven = 1 else xeven = 0 end
+    if (yt - yb).odd? then yeven = 1 else yeven = 0 end
 
     # find radius
     xrad = ((xr - xl) / 2).ceil
@@ -148,49 +148,47 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
     xc = xl + xrad 
     yc = yb + yrad
     
-     if mode == 'diameter' then
-		if (xl != xr) && (yt != yb) then
-			puts "  Error: Designate a horizontal or vertical diameter"
-			throw :script_finished
-			end
-		
-		if (xl == xr) then
-			#If x's equal, this is a vertical designation
-			xl -= yrad
-			xr += yrad	
-			xrad = yrad
-			else
-				yt += xrad
-				yb -= xrad
-				yrad = xrad
-			end
-		
-		end
-	
-	if mode == 'axis' then
-		if (xl != xr) && (yt != yb) then
-			puts "  Error: Designate a horizontal or vertical diameter"
-			throw :script_finished
-			end
-		
-		if (xl == xr) then
-			#If x's equal, this is a vertical designation origin--major
-			#find true x components
-			xrad = (x2 - xl).abs
-			xtemp = xl
-			xl = xtemp + xrad
-			xr = xtemp - xrad
-			
-			else
-				#Horizontal origin--major
-				#find true y components
-				yrad = (y2 - yt).abs
-				ytemp = yt
-				yt = ytemp + yrad
-				yb = ytemp - yrad
-			end
-		end
+    if mode == 'diameter' then
+        if (xl != xr) && (yt != yb) then
+            puts "  Error: Designate a horizontal or vertical diameter"
+            throw :script_finished
+        end
 
+        if (xl == xr) then
+            #If x's equal, this is a vertical designation
+            xl -= yrad
+            xr += yrad	
+            xrad = yrad
+        else
+            yt += xrad
+            yb -= xrad
+            yrad = xrad
+        end
+    end
+
+    if mode == 'axis' then
+        if (xl != xr) && (yt != yb) then
+            puts "  Error: Designate a horizontal or vertical diameter"
+            throw :script_finished
+        end
+
+        if (xl == xr) then
+            #If x's equal, this is a vertical designation origin--major
+            #find true x components
+            xrad = (x2 - xl).abs
+            xtemp = xl
+            xl = xtemp + xrad
+            xr = xtemp - xrad
+
+        else
+            #Horizontal origin--major
+            #find true y components
+            yrad = (y2 - yt).abs
+            ytemp = yt
+            yt = ytemp + yrad
+            yb = ytemp - yrad
+        end
+    end
 
     # Avoid endless loop
     return if (xrad < 1 || yrad < 1)
@@ -282,9 +280,9 @@ end
 
 def digKeupoStair(x, y, z, depth)
     iz = z
-	digAt(x, y, iz, 'j')
+    digAt(x, y, iz, 'j')
     digAt(x - 1, y + 1, iz, 'j')
-	digAt(x - 1, y - 1, iz, 'j')
+    digAt(x - 1, y - 1, iz, 'j')
     digAt(x + 1, y + 1, iz, 'j')
     digAt(x + 1, y - 1, iz, 'j')
     while iz >= z - (depth - 1) do
@@ -305,34 +303,31 @@ def getDigMode(digMode = 'd')
 end
 
 def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, apothem=false, digMode = 'd')
-   # if n < 3 then
-   #     n = 3
-   # end
-   # if you dig a 2-gon (aka a line) it always passes through the origin so it's still convienient / useful
+    # if you dig a 2-gon (aka a line) it always passes through the origin so it's still convienient / useful
 
     xOffset = x1 - x0
     yOffset = y1 - y0
 
     radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
 
-	angle=Math::atan2(yOffset/radius,xOffset/radius)
-	angleIncrement = (Math::PI*2)/n;
+    angle=Math::atan2(yOffset/radius,xOffset/radius)
+    angleIncrement = (Math::PI*2)/n;
 
     lastX = x1
     lastY = y1
 
-	if apothem==true then #cursor is at middle of a segment instead of vertex
-		angle+=angleIncrement/2
-		radius=radius/Math.cos(Math::PI/n)
-	end
-	
+    if apothem==true then #cursor is at middle of a segment instead of vertex
+        angle+=angleIncrement/2
+        radius=radius/Math.cos(Math::PI/n)
+    end
+    
     for i in 0..n
-		thisX = (x0 + (Math.cos(angle)*radius)).round
-		thisY = (y0 + (Math.sin(angle)*radius)).round
+        thisX = (x0 + (Math.cos(angle)*radius)).round
+        thisY = (y0 + (Math.sin(angle)*radius)).round
         if (i > 0) then
             drawLine(lastX, lastY, z0, thisX, thisY, z0, digMode)
         end
-		angle += angleIncrement
+        angle += angleIncrement
         lastX = thisX
         lastY = thisY
     end
@@ -345,21 +340,21 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
 
     radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
 
-	angle=Math::atan2(yOffset/radius,xOffset/radius)
-	angleIncrement = (Math::PI*2)/n;
+    angle=Math::atan2(yOffset/radius,xOffset/radius)
+    angleIncrement = (Math::PI*2)/n;
 
     lastX = x1
     lastY = y1
-	
+    
     for i in 0..n
-		thisX = (x0 + (Math.cos(angle)*radius)).round
-		thisY = (y0 + (Math.sin(angle)*radius)).round
-		thatX = (x0 + (Math.cos(angle+(angleIncrement*skip))*radius)).round
-		thatY = (y0 + (Math.sin(angle+(angleIncrement*skip))*radius)).round
+        thisX = (x0 + (Math.cos(angle)*radius)).round
+        thisY = (y0 + (Math.sin(angle)*radius)).round
+        thatX = (x0 + (Math.cos(angle+(angleIncrement*skip))*radius)).round
+        thatY = (y0 + (Math.sin(angle+(angleIncrement*skip))*radius)).round
         if (i > 0) then
             drawLine(thatX, thatY, z0, thisX, thisY, z0, digMode)
         end
-		angle += angleIncrement
+        angle += angleIncrement
     end
 end
 # script execution start
@@ -369,9 +364,9 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To set origin: digshape origin"
     puts "  To draw line after origin is set: digshape line"
     puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
-	puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
-	puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
-	puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
+    puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
+    puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
+    puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
     puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
@@ -387,9 +382,9 @@ if df.cursor.x == -30000 then
 end
 
 if command=="o" or command=="set" then #alias
-	command="origin"
+    command="origin"
 elsif command=="keupo" or command=="stairs" or command=="downstairs" then
-	command="downstair"
+    command="downstair"
 end
 
 case command
@@ -415,10 +410,10 @@ case command
             when 'hollow'; filled = false
             when 'true'; filled = true
             when 'false'; filled = false
-			when 't'; filled = true
-			when 'f'; filled = false
-			when 'y'; filled = true
-			when 'n'; filled = false
+            when 't'; filled = true
+            when 'f'; filled = false
+            when 'y'; filled = true
+            when 'n'; filled = false
         end
 
         dig = getDigMode(argument1) #check argument 1 for dig instructions
@@ -436,53 +431,53 @@ case command
             throw :script_finished
         end
     when 'circle2p'
-		if df.cursor.z == $originz then
-			drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode = 'd', mode = 'diameter')	
-			else
-				puts "  Error: origin and target must be on the same z level"
-				throw :script_finished
-			end
-	when 'major'
-		#used to mark the end point of the major diameter
-		#$major = df.cursor
-		$majorx = df.cursor.x
-		$majory = df.cursor.y
-		$majorz = df.cursor.z		
-		if df.cursor.z == $originz then
-			markOrigin($majorx, $majory, $majorz)
-			puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
-			else
-				puts "  Error: origin and target must be on the same z level"
-				throw :script_finished
-			end
-	when 'ellipse3p'
-		if df.cursor.z == $originz then
-			drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = false, digMode = 'd', mode = 'axis')
-			else
-				puts "  Error: origin and target must be on the same z level"
-				throw :script_finished
-			end
+        if df.cursor.z == $originz then
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode = 'd', mode = 'diameter')	
+            else
+                puts "  Error: origin and target must be on the same z level"
+                throw :script_finished
+            end
+    when 'major'
+        #used to mark the end point of the major diameter
+        #$major = df.cursor
+        $majorx = df.cursor.x
+        $majory = df.cursor.y
+        $majorz = df.cursor.z		
+        if df.cursor.z == $originz then
+            markOrigin($majorx, $majory, $majorz)
+            puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
+            else
+                puts "  Error: origin and target must be on the same z level"
+                throw :script_finished
+            end
+    when 'ellipse3p'
+        if df.cursor.z == $originz then
+            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = false, digMode = 'd', mode = 'axis')
+            else
+                puts "  Error: origin and target must be on the same z level"
+                throw :script_finished
+            end
     when 'polygon'
         if not argument1 then
             puts "  Must supply a polygon n-sides parameter"
             throw :script_finished
         else
             n = argument1.to_i
-			dig = getDigMode(argument2)
-			if argument3 then
-				dig = getDigMode(argument3)	
-			end
-			apothem=false;
-			case argument2
-				when 'apothem'; apothem=true
-				when 'radius'; apothem=false
-				when 'a'; apothem=true
-				when 'r'; apothem=false
-				when 't'; apothem=true
-				when 'f'; apothem=false
-				when 'y'; apothem=true
-				when 'n'; apothem=false
-			end
+            dig = getDigMode(argument2)
+            if argument3 then
+                dig = getDigMode(argument3)	
+            end
+            apothem=false;
+            case argument2
+                when 'apothem'; apothem=true
+                when 'radius'; apothem=false
+                when 'a'; apothem=true
+                when 'r'; apothem=false
+                when 't'; apothem=true
+                when 'f'; apothem=false
+                when 'y'; apothem=true
+                when 'n'; apothem=false
+            end
             if df.cursor.z == $originz then
                 drawPolygon($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, apothem, dig)
             else
@@ -490,17 +485,17 @@ case command
                 throw :script_finished
             end
         end
-	when 'star' # star N [SKIP=2] [DIGMODE]
+    when 'star' # star N [SKIP=2] [DIGMODE]
         if not argument1 then
             puts "  Must supply a star n-sides parameter"
             throw :script_finished
         else
-			dig = getDigMode(argument2)
-			if argument3 then
-				dig = getDigMode(argument3)	
-			end
+            dig = getDigMode(argument2)
+            if argument3 then
+                dig = getDigMode(argument3)	
+            end
             n = argument1.to_i
-			skip = Integer(argument2) rescue 2
+            skip = Integer(argument2) rescue 2
 
             if df.cursor.z == $originz then
                 drawStar($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, skip, dig)
