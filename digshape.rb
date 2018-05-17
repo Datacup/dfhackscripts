@@ -724,7 +724,6 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
     end
 end
 
-<<<<<<< HEAD
 def dig2enum(digMode)
     #this function turns a digmode into the appropriate enum for easier comparison on tile reading (eg floodfill.)
     case digMode #from https://github.com/DFHack/scripts/blob/master/digfort.rb
@@ -858,7 +857,6 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
     end
 end
 
-=======
 # based on an algorithm in this stackoverflow question
 # https://stackoverflow.com/questions/13894715/draw-equidistant-points-on-a-spiral
 def drawSpiral(x0, y0, z0, x1, y1, z1, coils, chord = 10, digMode = 'd')
@@ -904,7 +902,6 @@ def drawSpiral(x0, y0, z0, x1, y1, z1, coils, chord = 10, digMode = 'd')
 end
 
 
->>>>>>> 7a1348b... Basic spiral command
 # script execution start
 
 if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
