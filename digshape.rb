@@ -23,6 +23,9 @@ Commands that require an origin to be set:
     To draw a polygon using the origin as the center and the cursor as the radius|apothem (radius)
         digshape polygon <sides> [radius|apothem] [digMode]
 
+    To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
+        digshape spiral <coils> <chord>
+
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
 TODO: mark origin should not change the digging designation, ellipse cleanup should restore not clear it.
@@ -357,6 +360,51 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
         angle += angleIncrement
     end
 end
+
+# based on an algorithm in this stackoverflow question
+# https://stackoverflow.com/questions/13894715/draw-equidistant-points-on-a-spiral
+def drawSpiral(x0, y0, z0, x1, y1, z1, coils, chord = 10, digMode = 'd')
+    # ('0'=no rotation, '1'=360 degrees, '180/360'=180 degrees)
+    rotation = 0
+
+    # value of theta corresponding to end of last coil
+    thetaMax = coils * 2 * Math::PI
+
+    xOffset = x1 - x0
+    yOffset = y1 - y0
+
+    radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
+
+    # How far to step away from center for each side.
+    awayStep = radius / thetaMax
+
+    digAt(x0, y0, z0, digMode)
+
+    # For every side, step around and away from center.
+    # start at the angle corresponding to a distance of chord
+    # away from centre.
+    theta = chord / awayStep
+
+    while (theta <= thetaMax)
+        # How far away from center
+        away = awayStep * theta
+
+        # How far around the center.
+        around = theta + rotation
+
+        # Convert 'around' and 'away' to X and Y.
+        x = x0 + (Math.cos(around) * away).round
+        y = y0 + (Math.sin(around) * away).round
+
+        digAt(x, y, z0, digMode)
+    
+        # to a first approximation, the points are on a circle
+        # so the angle between them is chord/radius
+        theta += chord / away
+    end
+end
+
+
 # script execution start
 
 if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
@@ -515,6 +563,26 @@ case command
                 throw :script_finished
             else
                 digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth)
+            end
+        end
+    when 'spiral'
+        if not argument1 then
+            puts "  Must supply a coils parameter"
+            throw :script_finished
+        else
+            coils = argument1.to_i
+            if coils <= 0 then
+                puts "  Coils must be an integer greater than zero"
+                throw :script_finished
+            else
+                chord = 2
+                if argument2 then
+                    chord = argument2.to_i
+                end
+
+                dig = getDigMode(argument3)
+
+                drawSpiral($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, dig)
             end
         end
     else
