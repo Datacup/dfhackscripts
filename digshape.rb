@@ -372,7 +372,9 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw downstair: digshape downstair depth"
     puts "  To set origin: digshape origin"
     puts "  To draw line after origin is set: digshape line"
-    puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <filled:true|false>"
+    puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <fill:filled|hollow>"
+    puts "..To draw an ellipse after origin is set (by major and minor axis): digshape major (must be horizontal or vertical), then digshape ellipse3p <fill:filled|hollow>"
+    puts "..To draw a circle after origin is set, select any point as a diameter: digshape circle2p <fill:filled|hollow>"
     puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
     puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
     puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
@@ -412,7 +414,7 @@ case command
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
-    when 'ellipse'
+    when 'ellipse' #digshape ellipse [filled] [digmode]
         filled = false
         case argument1
             when 'filled'; filled = true
@@ -439,7 +441,7 @@ case command
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
-    when 'circle2p'
+    when 'circle2p' #digshape circle2p [filled] [digmode]
         filled = false
         case argument1
             when 'filled'; filled = true
@@ -463,7 +465,7 @@ case command
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
-    when 'major'
+    when 'major' #digshape major
         #used to mark the end point of the major diameter
         #$major = df.cursor
         $majorx = df.cursor.x
@@ -476,7 +478,7 @@ case command
             puts "  Error: origin and target must be on the same z level"
             throw :script_finished
         end
-    when 'ellipse3p'
+    when 'ellipse3p' #digshape ellipse3p [filled] [digmode]
         if df.cursor.z == $originz then
             filled = false
             case argument1
