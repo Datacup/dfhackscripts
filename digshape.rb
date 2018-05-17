@@ -320,7 +320,7 @@ def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, apothem=false, digMode = 'd')
         angle+=angleIncrement/2
         radius=radius/Math.cos(Math::PI/n)
     end
-    
+
     for i in 0..n
         thisX = (x0 + (Math.cos(angle)*radius)).round
         thisY = (y0 + (Math.sin(angle)*radius)).round
@@ -334,7 +334,6 @@ def drawPolygon(x0, y0, z0, x1, y1, z1, n = 3, apothem=false, digMode = 'd')
 end
 
 def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
-
     xOffset = x1 - x0
     yOffset = y1 - y0
 
@@ -345,7 +344,7 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
 
     lastX = x1
     lastY = y1
-    
+
     for i in 0..n
         thisX = (x0 + (Math.cos(angle)*radius)).round
         thisY = (y0 + (Math.sin(angle)*radius)).round
@@ -431,7 +430,7 @@ case command
             throw :script_finished
         end
     when 'circle2p'
-		filled = false
+        filled = false
         case argument1
             when 'filled'; filled = true
             when 'hollow'; filled = false
@@ -450,10 +449,10 @@ case command
 
         if df.cursor.z == $originz then
             drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode = dig, mode = 'diameter')
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
-            end
+        else
+            puts "  Error: origin and target must be on the same z level"
+            throw :script_finished
+        end
     when 'major'
         #used to mark the end point of the major diameter
         #$major = df.cursor
@@ -463,34 +462,34 @@ case command
         if df.cursor.z == $originz then
             markOrigin($majorx, $majory, $majorz)
             puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
-            end
+        else
+            puts "  Error: origin and target must be on the same z level"
+            throw :script_finished
+        end
     when 'ellipse3p'
         if df.cursor.z == $originz then
-			filled = false
-			case argument1
-				when 'filled'; filled = true
-				when 'hollow'; filled = false
-				when 'true'; filled = true
-				when 'false'; filled = false
-				when 't'; filled = true
-				when 'f'; filled = false
-				when 'y'; filled = true
-				when 'n'; filled = false
-			end
-			
-			dig = getDigMode(argument1) #check argument 1 for dig instructions
-			if argument2 then # if argument 2 is present, look at that for dig instructions
-				dig = getDigMode(argument2)
-			end
-			
-            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = filled, digMode = dig, mode = 'axis')
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
+            filled = false
+            case argument1
+                when 'filled'; filled = true
+                when 'hollow'; filled = false
+                when 'true'; filled = true
+                when 'false'; filled = false
+                when 't'; filled = true
+                when 'f'; filled = false
+                when 'y'; filled = true
+                when 'n'; filled = false
             end
+
+            dig = getDigMode(argument1) #check argument 1 for dig instructions
+            if argument2 then # if argument 2 is present, look at that for dig instructions
+                dig = getDigMode(argument2)
+            end
+
+            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = filled, digMode = dig, mode = 'axis')
+        else
+            puts "  Error: origin and target must be on the same z level"
+            throw :script_finished
+        end
     when 'polygon'
         if not argument1 then
             puts "  Must supply a polygon n-sides parameter"
