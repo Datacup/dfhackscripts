@@ -149,20 +149,30 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
     yc = yb + yrad
     
     if mode == 'diameter' then
-        if (xl != xr) && (yt != yb) then
-            puts "  Error: Designate a horizontal or vertical diameter"
-            throw :script_finished
-        end
-
         if (xl == xr) then
             #If x's equal, this is a vertical designation
             xl -= yrad
             xr += yrad
             xrad = yrad
-        else
-            yt += xrad
-            yb -= xrad
-            yrad = xrad
+            elsif (yt==yb)
+                #a horizontal designation
+                yt += xrad
+                yb -= xrad
+                yrad = xrad
+            else
+                #a diagonal designation
+                diam = Math.sqrt( (xr-xl)**2 + (yt-yb)**2 )
+                rad = (diam/2).floor
+                
+                xc = ((xl + xr ) / 2).ceil
+                yc = ((yt + yb ) / 2).ceil
+                
+                xl = xc - rad
+                xr = xc + rad
+                yt = yc + rad
+                yb = yc - rad
+                
+                xrad = yrad = rad
         end
     end
 
