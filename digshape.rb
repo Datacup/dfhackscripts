@@ -431,8 +431,25 @@ case command
             throw :script_finished
         end
     when 'circle2p'
+		filled = false
+        case argument1
+            when 'filled'; filled = true
+            when 'hollow'; filled = false
+            when 'true'; filled = true
+            when 'false'; filled = false
+            when 't'; filled = true
+            when 'f'; filled = false
+            when 'y'; filled = true
+            when 'n'; filled = false
+        end
+        
+        dig = getDigMode(argument1) #check argument 1 for dig instructions
+        if argument2 then # if argument 2 is present, look at that for dig instructions
+            dig = getDigMode(argument2)
+        end
+
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=false, digMode = 'd', mode = 'diameter')
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode = dig, mode = 'diameter')
             else
                 puts "  Error: origin and target must be on the same z level"
                 throw :script_finished
@@ -452,7 +469,24 @@ case command
             end
     when 'ellipse3p'
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = false, digMode = 'd', mode = 'axis')
+			filled = false
+			case argument1
+				when 'filled'; filled = true
+				when 'hollow'; filled = false
+				when 'true'; filled = true
+				when 'false'; filled = false
+				when 't'; filled = true
+				when 'f'; filled = false
+				when 'y'; filled = true
+				when 'n'; filled = false
+			end
+			
+			dig = getDigMode(argument1) #check argument 1 for dig instructions
+			if argument2 then # if argument 2 is present, look at that for dig instructions
+				dig = getDigMode(argument2)
+			end
+			
+            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = filled, digMode = dig, mode = 'axis')
             else
                 puts "  Error: origin and target must be on the same z level"
                 throw :script_finished
