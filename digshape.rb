@@ -57,7 +57,7 @@ def digAt(x, y, z, digMode = 'd')
             when 'x'; t.dig(:No)
             else
                 puts "  Error: Unknown digtype"
-                throw :script_finished	
+                throw :script_finished
         end
     end
 end
@@ -128,7 +128,7 @@ end
 
 def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, digMode = 'd', mode = 'bbox')
     # A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf (https://www.dropbox.com/s/3q89g566u115g3q/belipse.pdf?dl=0)
-    # also adapted from https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs used under the MIT license 
+    # also adapted from https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs used under the MIT license
 
     xl = [x0, x1].min # find left edge
     xr = [x0, x1].max # find right edge
@@ -145,7 +145,7 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
     yrad = ((yt - yb) / 2).ceil
 
     # find center
-    xc = xl + xrad 
+    xc = xl + xrad
     yc = yb + yrad
     
     if mode == 'diameter' then
@@ -157,7 +157,7 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
         if (xl == xr) then
             #If x's equal, this is a vertical designation
             xl -= yrad
-            xr += yrad	
+            xr += yrad
             xrad = yrad
         else
             yt += xrad
@@ -422,7 +422,7 @@ case command
         end
 
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode=dig)
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=dig, mode = 'bbox')
 
             # remove origin designation
             digAt($originx, $originy, $originz, 'x')
@@ -431,8 +431,25 @@ case command
             throw :script_finished
         end
     when 'circle2p'
+		filled = false
+        case argument1
+            when 'filled'; filled = true
+            when 'hollow'; filled = false
+            when 'true'; filled = true
+            when 'false'; filled = false
+            when 't'; filled = true
+            when 'f'; filled = false
+            when 'y'; filled = true
+            when 'n'; filled = false
+        end
+        
+        dig = getDigMode(argument1) #check argument 1 for dig instructions
+        if argument2 then # if argument 2 is present, look at that for dig instructions
+            dig = getDigMode(argument2)
+        end
+
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode = 'd', mode = 'diameter')	
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode = dig, mode = 'diameter')
             else
                 puts "  Error: origin and target must be on the same z level"
                 throw :script_finished
@@ -442,7 +459,7 @@ case command
         #$major = df.cursor
         $majorx = df.cursor.x
         $majory = df.cursor.y
-        $majorz = df.cursor.z		
+        $majorz = df.cursor.z
         if df.cursor.z == $originz then
             markOrigin($majorx, $majory, $majorz)
             puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
@@ -452,7 +469,24 @@ case command
             end
     when 'ellipse3p'
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = false, digMode = 'd', mode = 'axis')
+			filled = false
+			case argument1
+				when 'filled'; filled = true
+				when 'hollow'; filled = false
+				when 'true'; filled = true
+				when 'false'; filled = false
+				when 't'; filled = true
+				when 'f'; filled = false
+				when 'y'; filled = true
+				when 'n'; filled = false
+			end
+			
+			dig = getDigMode(argument1) #check argument 1 for dig instructions
+			if argument2 then # if argument 2 is present, look at that for dig instructions
+				dig = getDigMode(argument2)
+			end
+			
+            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = filled, digMode = dig, mode = 'axis')
             else
                 puts "  Error: origin and target must be on the same z level"
                 throw :script_finished
@@ -465,7 +499,7 @@ case command
             n = argument1.to_i
             dig = getDigMode(argument2)
             if argument3 then
-                dig = getDigMode(argument3)	
+                dig = getDigMode(argument3)
             end
             apothem=false;
             case argument2
@@ -492,7 +526,7 @@ case command
         else
             dig = getDigMode(argument2)
             if argument3 then
-                dig = getDigMode(argument3)	
+                dig = getDigMode(argument3)
             end
             n = argument1.to_i
             skip = Integer(argument2) rescue 2
