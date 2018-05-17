@@ -1,38 +1,40 @@
-# Some DFHack scripts
-
-Some dfhack scripts from friends of keupo on twitch
 # Usage
-*note*: any of the drawing commands can be appended with a digging designation [dujihrx] at the end, or will default to 'd'
 
-for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs with the mark as the center and the cursor as a vertex on the star
+You can add a digging designation to the end of any of the drawing commands - [dujihrx].  The default is 'd'.
 
-## in-game help
-`digshape ?`
+For example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs with the mark as the center and the cursor as a vertex on the star
 
-## set mark
-	digshape origin
+## In-game help
+    digshape ?
 
-## draw a line
-	digshape line
+## Set the origin
+    digshape origin
+
+## Draw a line
+    digshape line
 *from cursor to mark*
 
-## draw an ellipse
-	digshape ellipse
+## Draw an ellipse
+    digshape ellipse
 *cursor and mark as bounding box*
 
-## draw a polygon with cursor as vertex
-	digshape polygon <n sides>
+## Draw a polygon with cursor as vertex
+    digshape polygon <n sides>
 *mark as center and cursor as a vertex*
 
-## draw a polygon with cursor as apothem
-	digshape polygon <n sides> apothem
+## Draw a polygon with cursor as apothem
+    digshape polygon <n sides> apothem
 *mark as center and cursor as a midpoint*
 
-## draw a star polygon
-	digshape star <n sides> [skip=2]
-in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbol)
+## Draw a star polygon
+In [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbol)
 *mark as center and cursor as a vertex*
 
+    digshape star <n sides> [skip=2]
+
+
+## Draw an Archimedean spiral with specified number of "coils", each point separated by "chord" tiles
+    digshape spiral <coils> <chord>
 
 # Contributors
 
@@ -55,4 +57,3 @@ in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
 [Writeable Bitmap Shape Extensions](https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs) used under the MIT license 
 
 [Drawing equidistant points on a spiral](https://stackoverflow.com/questions/13894715/draw-equidistant-points-on-a-spiral)
-	
