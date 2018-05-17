@@ -29,6 +29,10 @@ TODO: mark origin should not change the digging designation, ellipse cleanup sho
 
 =end
 
+
+puts RUBY_VERSION
+
+
 def markOrigin(ox, oy, oz)
     t = df.map_tile_at(ox, oy, oz)
     if t then
@@ -395,7 +399,7 @@ case command
         end
 
         if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode=dig)
+            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=dig, mode = 'bbox')
 
             # remove origin designation
             digAt($originx, $originy, $originz, 'x')
@@ -405,7 +409,7 @@ case command
         end
     when 'circle2p'
 		if df.cursor.z == $originz then
-			drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode = 'd', mode = 'diameter')	
+			drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=false, digMode = 'd', mode = 'diameter')	
 			else
 				puts "  Error: origin and target must be on the same z level"
 				throw :script_finished
