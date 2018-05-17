@@ -374,33 +374,34 @@ def drawSpiral(x0, y0, z0, x1, y1, z1, coils, chord = 10, digMode = 'd')
     yOffset = y1 - y0
 
     radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
+    if (radius > 0.0) then
+        # How far to step away from center for each side.
+        awayStep = radius / thetaMax
 
-    # How far to step away from center for each side.
-    awayStep = radius / thetaMax
+        digAt(x0, y0, z0, digMode)
 
-    digAt(x0, y0, z0, digMode)
+        # For every side, step around and away from center.
+        # start at the angle corresponding to a distance of chord
+        # away from centre.
+        theta = chord / awayStep
 
-    # For every side, step around and away from center.
-    # start at the angle corresponding to a distance of chord
-    # away from centre.
-    theta = chord / awayStep
+        while (theta.abs <= thetaMax.abs)
+            # How far away from center
+            away = awayStep * theta
 
-    while (theta <= thetaMax)
-        # How far away from center
-        away = awayStep * theta
+            # How far around the center.
+            around = theta + rotation
 
-        # How far around the center.
-        around = theta + rotation
+            # Convert 'around' and 'away' to X and Y.
+            x = x0 + (Math.cos(around) * away).round
+            y = y0 + (Math.sin(around) * away).round
 
-        # Convert 'around' and 'away' to X and Y.
-        x = x0 + (Math.cos(around) * away).round
-        y = y0 + (Math.sin(around) * away).round
+            digAt(x, y, z0, digMode)
 
-        digAt(x, y, z0, digMode)
-    
-        # to a first approximation, the points are on a circle
-        # so the angle between them is chord/radius
-        theta += chord / away
+            # to a first approximation, the points are on a circle
+            # so the angle between them is chord/radius
+            theta += chord / away
+        end
     end
 end
 
@@ -571,19 +572,14 @@ case command
             throw :script_finished
         else
             coils = argument1.to_i
-            if coils <= 0 then
-                puts "  Coils must be an integer greater than zero"
-                throw :script_finished
-            else
-                chord = 2
-                if argument2 then
-                    chord = argument2.to_i
-                end
-
-                dig = getDigMode(argument3)
-
-                drawSpiral($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, dig)
+            chord = 2
+            if argument2 then
+                chord = argument2.to_i
             end
+
+            dig = getDigMode(argument3)
+
+            drawSpiral($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, dig)
         end
     else
         puts "  Error: Invalid command"
