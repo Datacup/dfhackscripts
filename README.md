@@ -17,8 +17,19 @@ for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs w
 *from cursor to mark*
 
 ## draw an ellipse
-	digshape ellipse
+	digshape ellipse [filled]
 *cursor and mark as bounding box*
+
+## draw an ellipse by axis
+        digshape major
+*set the major axis from origin to mark, must be horizontal or vertical*
+
+        digshape ellipse3p [filled]
+*draw ellipse using marked major axis and current point as the minor axis radius*
+
+## draw a circle
+        digshape circle2p [filled]
+*draw a circle using origin and mark as a diameter*
 
 ## draw a polygon with cursor as vertex
 	digshape polygon <n sides>
