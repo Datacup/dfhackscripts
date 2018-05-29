@@ -20,6 +20,25 @@ for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs w
 	digshape ellipse
 *cursor and mark as bounding box*
 
+### draw an ellipse using 3 pt
+	digshape major  
+*set the end of the major axis from origin to mark*
+
+	digshape ellipse 3p
+*draw the ellipse using new cursor as the semiminor axis length (center->cursor)*
+*Note: ellipse3p cannot yet be filled*
+
+## draw a circle with arbitrary diameter
+	digshape circle 2p
+*cursor and mark form the diameter of the circle (at any tilt)*
+
+## draw a 3 pt bezier curve
+	digshape major
+*set the end point of the curve*
+
+	digshape bez [sharpness=1.5]
+*draw the curve between mark and endpoint, pulled towards the cursor. A weight may be specified to adjust the sharpness of the curve.*
+
 ## draw a polygon with cursor as vertex
 	digshape polygon <n sides>
 *mark as center and cursor as a vertex*
@@ -51,6 +70,8 @@ in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
 
 [A Fast Bresenham Type Algorithm For Drawing Ellipses](http://homepage.smc.edu/kennedy_john/belipse.pdf),
 [alternate link](https://www.dropbox.com/s/3q89g566u115g3q/belipse.pdf?dl=0), also in [resources/belipse.pdf](resources/belipse.pdf)
+
+[A Rasterizing Algorithm for Drawing Curves](http://members.chello.at/easyfilter/bresenham.pdf)
 
 [Writeable Bitmap Shape Extensions](https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs) used under the MIT license 
 
