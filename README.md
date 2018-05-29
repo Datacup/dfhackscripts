@@ -18,26 +18,26 @@ for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs w
 
 ## draw an ellipse
 	digshape ellipse [filled]
-*cursor and mark as bounding box*
+*mark and cursor as bounding box*
 
 ### draw an ellipse using 3 pt
 	digshape major  
-*set the end of the major axis from origin to mark*
+*set the end of the major axis from mark to cursor*
 
-	digshape ellipse 3p
-*draw the ellipse using new cursor as the semiminor axis length (center->cursor)*
-*Note: ellipse3p cannot yet be filled*
+	digshape ellipse3p
+*draw the ellipse using new cursor as the semiminor axis length (midpoint of major axis->cursor)*  
+*Note: ellipse3p cannot yet be filled by an argument, use flood*
 
 ## draw a circle with arbitrary diameter
-	digshape circle 2p
-*cursor and mark form the diameter of the circle (at any tilt)*
+	digshape circle2p
+*mark and cursor form the diameter of the circle (at any tilt)*
 
 ## draw a 3 pt bezier curve
 	digshape major
-*set the end point of the curve*
+*set the endpoint of the curve*
 
 	digshape bez [sharpness=1.5]
-*draw the curve between mark and endpoint, pulled towards the cursor. A weight may be specified to adjust the sharpness of the curve.*
+*draw the curve between mark and endpoint, pulled towards the cursor. A weight may be specified to adjust the sharpness of the curve [0=straight line, large number=hairpin).*
 
 ## draw a polygon with cursor as vertex
 	digshape polygon <n sides>
@@ -54,7 +54,8 @@ in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
 
 ## flood fill an area
         digshape flood [max coverage=10000]
-*Fill an area with a dig designation. Will only fill tiles that match the designation under the cursor. Larger max coverages can take time to fill. A great way to fill in the above shapes.*
+*Fill an area with a dig designation. Will only fill tiles that match the designation under the cursor.*  
+*Note: Larger max coverages can take time to fill. A great way to fill in the above shapes.*
 
 # Contributors
 
