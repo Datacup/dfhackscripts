@@ -17,7 +17,7 @@ for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs w
 *from cursor to mark*
 
 ## draw an ellipse
-	digshape ellipse
+	digshape ellipse [filled]
 *cursor and mark as bounding box*
 
 ### draw an ellipse using 3 pt
