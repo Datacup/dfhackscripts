@@ -678,6 +678,41 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
         angle += angleIncrement
     end
 end
+
+def floodfill(x,y,z,digMode, maxArea)
+    t=df.map_tile_at(x,y,z)
+    
+    if not t then
+        #ignore impossible tiles (eg air.)
+        return
+    end
+    
+    if not t.designation.dig == :No then
+        #don't dig designated tiles
+        return
+    else
+        s = t.shape_basic
+        if not s == :Wall
+            #tile must be a wall to dig.
+            return
+        end
+        
+        #do the dig for the current tile:
+        digAt(x,y,z,digMode) 
+    end
+    
+    #scan for next tile to dig.
+    counter = maxArea
+    while counter > 0 do
+                counter = counter - 1
+                
+                floodfill(x+1,y,z,digMode,counter)
+                floodfill(x-1,y,z,digMode,counter)
+                floodfill(x,y+1,z,digMode,counter)
+                floodfill(x,y-1,z,digMode,counter)
+                end
+end
+
 # script execution start
 
 if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
@@ -908,6 +943,18 @@ case command
                 digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth)
             end
         end
+    when 'flood'
+        dig = getDigMode(argument1)
+        maxArea = 1000
+        
+        t=df.map_tile_at(df.cursor.x, df.cursor.y, df.cursor.z)
+        
+        if not t.designation.dig == :No then
+            puts "  Error: floodfill must be centered on an undesignated tile."
+            throw :script_finished
+            end
+        
+        floodfill(df.cursor.x, df.cursor.y, df.cursor.z, dig, maxArea)
     else
         puts "  Error: Invalid command"
         throw :script_finished
