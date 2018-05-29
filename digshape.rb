@@ -33,6 +33,9 @@ Commands that require an origin to be set:
       
     To draw a polygon using the origin as the center and the cursor as the radius|apothem (radius)
         digshape polygon <sides> [radius|apothem] [digMode]
+    
+    To flood fill with a designation, overwriting ONLY the designation under the cursor:
+        digshape flood
 
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
@@ -679,38 +682,101 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
     end
 end
 
-def floodfill(x,y,z,digMode, maxArea)
+def dig2enum(digMode)
+    #this function turns a digmode into the appropriate enum for easier comparison on tile reading (eg floodfill.)
+    case digMode #from https://github.com/DFHack/scripts/blob/master/digfort.rb
+        when 'd'; return :Default
+        when 'u'; return :UpStair
+        when 'j'; return :DownStair
+        when 'i'; return :UpDownStair
+        when 'h'; return :Channel
+        when 'r'; return :Ramp
+        when 'x'; return :No
+        else
+            puts "  Error: Unknown digtype"
+            throw :script_finished
+    end
+end
+
+def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
+    #targetDig: what designation type can we overwrite?
+    #digMode: what designation are we placing?
+    #maxCounter: a limit to help with performance.
+    
+    counter = maxCounter #max flood fill.
     t=df.map_tile_at(x,y,z)
     
     if not t then
         #ignore impossible tiles (eg air.)
+        throw :script_finished
         return
     end
     
-    if not t.designation.dig == :No then
-        #don't dig designated tiles
+    digNum = dig2enum(digMode) #Stash this, we'll use it many times.
+    
+    if t.designation.dig == digNum then
+        #don't dig tiles that are already dug
+        throw :script_finished
         return
-    else
-        s = t.shape_basic
-        if not s == :Wall
-            #tile must be a wall to dig.
-            return
-        end
-        
-        #do the dig for the current tile:
-        digAt(x,y,z,digMode) 
     end
     
     #scan for next tile to dig.
-    counter = maxArea
-    while counter > 0 do
-                counter = counter - 1
-                
-                floodfill(x+1,y,z,digMode,counter)
-                floodfill(x-1,y,z,digMode,counter)
-                floodfill(x,y+1,z,digMode,counter)
-                floodfill(x,y-1,z,digMode,counter)
+    xStack = [x]
+    yStack = [y]
+    
+    loop do
+        x= xw = xe = xStack.pop()
+        y = yStack.pop() #always push/pop x&y together.
+        
+        #search W for bounds
+        loop do
+            xi = xw - 1 #move xw cursor west until it hits a match
+            t=df.map_tile_at(xi,y,z)
+            
+            if !t || xi == 0  || t.designation.dig != targetDig || t.shape_basic != :Wall then 
+                break
                 end
+            xw = xi
+        end
+        
+        #search E for bounds
+        loop do
+            xi = xe + 1 #move xe cursor east until it hits a match
+            t=df.map_tile_at(xi,y,z)
+            
+            if !t || xi == 0  || t.designation.dig != targetDig || t.shape_basic != :Wall then 
+                break
+                end
+            xe = xi
+        end
+
+       #scan W..E filling, and checking N/S
+        for xi in xw..xe do
+            digAt(xi, y, z, digMode)
+            
+            counter = counter -1
+            if counter <=0 then 
+                puts "  Max coverage of #{maxCounter} tiles reached. Use multiple floods, or add a number for max coverage as 'digshape flood [max coverage] [dig type]'."
+                return 
+            end
+            
+            #check N/S
+            t = df.map_tile_at(xi,y+1,z)
+            if t && t.designation.dig == targetDig then
+                xStack.push(xi)
+                yStack.push(y+1)
+                end
+            t = df.map_tile_at(xi,y-1,z)
+            if t && t.designation.dig == targetDig then 
+                xStack.push(xi)
+                yStack.push(y-1)
+                end
+            end
+        
+        if xStack.length <=0 then
+            break
+        end
+    end
 end
 
 # script execution start
@@ -726,6 +792,7 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
     puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
     puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
+    puts "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
     puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
@@ -944,17 +1011,26 @@ case command
             end
         end
     when 'flood'
-        dig = getDigMode(argument1)
-        maxArea = 1000
+        maxArea = argument1.to_i
+        if maxArea == 0 then maxArea = 10000 end
+        
+        dig = getDigMode(argument1) #check argument 1 for dig instructions
+        if argument2 then # if argument 2 is present, look at that for dig instructions
+            dig = getDigMode(argument2)
+        end
         
         t=df.map_tile_at(df.cursor.x, df.cursor.y, df.cursor.z)
+        targetDig = t.designation.dig #we will only fill the designation type under the cursor.
         
-        if not t.designation.dig == :No then
-            puts "  Error: floodfill must be centered on an undesignated tile."
+        if not t.designation.dig==:No then
+            if dig2enum(dig) == t.designation.dig then
+            puts "  Error: floodfill must be centered on an undesignated/matching tile."
             throw :script_finished
             end
-        
-        floodfill(df.cursor.x, df.cursor.y, df.cursor.z, dig, maxArea)
+        end
+
+        floodfill(df.cursor.x, df.cursor.y, df.cursor.z, targetDig, dig, maxArea)
+        throw :script_finished
     else
         puts "  Error: Invalid command"
         throw :script_finished
