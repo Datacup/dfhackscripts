@@ -52,6 +52,9 @@ for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs w
 in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbol)
 *mark as center and cursor as a vertex*
 
+## flood fill an area
+        digshape flood [max coverage=10000]
+*Fill an area with a dig designation. Will only fill tiles that match the designation under the cursor. Larger max coverages can take time to fill. A great way to fill in the above shapes.*
 
 # Contributors
 
