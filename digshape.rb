@@ -126,9 +126,298 @@ def drawLine(x0, y0, z0, x1, y1, z1, digMode = 'd')
     end
 end
 
+
+def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w)
+    #/* plot a limited rational Bezier segment, squared weight */
+    #http://members.chello.at/easyfilter/bresenham.pdf listing 12
+    #p0:origin, p1:weight, p2:termination
+    #w is the weighting. "For w =1 the curve is a parabola, for w < 1 the curve is an ellipse, for w = 0 the curve is a straight line and for w>1 the curve is a hyperbola. The weights are normally assumed to be all positive."
+    
+    x0 = x0.floor  #start with integer locations. Original code stores in int, so this is implicit.
+    x1 = x1.floor
+    x2 = x2.floor
+    y0 = y0.floor
+    y1 = y1.floor
+    y2 = y2.floor
+    
+    sx = x2 - x1 ## relative values for checks */
+    sy = y2 - y1
+    dx = x0 - x2
+    dy = y0 - y2
+    xx = x0 - x1
+    yy = y0 - y1
+    xy = xx * sy + yy * sx
+    cur = xx * sy - yy * sx ## curvature */
+    
+    if (cur != 0.0 && w > 0.0) then 
+        ## no straight line */
+        if (sx * sx + sy * sy > xx * xx + yy * yy) then 
+            ## begin with longer part */
+            x2 = x0  ## swap P0 P2 */
+            x0 = x0 - dx
+            y2 = y0
+            y0 = y0 - dy
+            cur = -cur
+        end
+        
+        xx = 2.0 * (4.0 * w * sx * xx + dx * dx)  ## differences 2nd degree */
+        yy = 2.0 * (4.0 * w * sy * yy + dy * dy)
+        
+        sx = x0 < x2 ? 1 : -1  #/* x step direction */
+        sy = y0 < y2 ? 1 : -1  #/* y step direction */
+        xy = -2.0 * sx * sy * (2.0 * w * xy + dx * dy)
+        
+        if (cur * sx * sy < 0.0) then  
+        ## negated curvature? */
+            xx = -xx
+            yy = -yy
+            xy = -xy
+            cur = -cur
+        end
+        
+        ## differences 1st degree */
+        dx = 4.0 * w * (x1 - x0) * sy * cur + xx / 2.0 + xy  
+        dy = 4.0 * w * (y0 - y1) * sx * cur + yy / 2.0 + xy
+        
+        if (w < 0.5 && dy > dx) then
+            ## flat ellipse, algorithm fails */
+            cur = (w + 1.0) / 2.0
+            w = Math.sqrt(w)
+            xy = 1.0 / (w + 1.0)
+            
+            ## subdivide curve in half */
+            sx = ((x0 + 2.0 * w * x1 + x2) * xy / 2.0 + 0.5).floor
+            sy = ((y0 + 2.0 * w * y1 + y2) * xy / 2.0 + 0.5).floor
+            
+            ## plot separately */
+            dx = ((w * x1 + x0) * xy + 0.5).floor
+            dy = ((y1 * w + y0) * xy + 0.5).floor
+            plotQuadRationalBezierSeg(x0, y0, dx, dy, sx, sy, cur)
+            
+            dx = ((w * x1 + x2) * xy + 0.5).floor
+            dy = ((y1 * w + y2) * xy + 0.5).floor
+            plotQuadRationalBezierSeg(sx, sy, dx, dy, x2, y2, cur)
+            
+            #we are finished with plotting by recursion, exit.
+            return
+        end
+        
+        err = dx + dy - xy ## error 1.step */
+
+        loop do
+            digAt(x0,y0,z0, 'd')  #/* plot curve */
+
+            if (x0.floor == x2.floor && y0.floor == y2.floor) then
+                #/* last pixel -> curve finished */
+                return  
+            end
+                
+            ## save value for test of x step */
+            x1 = 2 * err > dy
+            y1 = 2 * (err + yy) < -dy
+            
+            if (2 * err < dx ||  y1) then
+                #xstep
+                y0 = y0 + sy
+                dy = dy + xy
+                dx = dx + xx
+                err = err + dx
+            end
+            
+            if (2 * err > dx ||  x1) then
+                #y step
+                x0 = x0 + sx
+                dx = dx + xy
+                dy = dy + yy
+                err = err + dy
+                
+            end
+            
+            if (dy > dx) then
+                break ## gradient negates -> algorithm fails */
+            end
+        end
+    end
+    
+    ## plot remaining needle to end */
+    drawLine(x0,y0,z0, x2,y2,z0)
+end
+
+
+
+def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5)
+    #http://members.chello.at/easyfilter/bresenham.pdf listing 11
+    ## plot any quadratic rational Bezier curve */
+    
+    x = x0 - 2 * x1 + x2
+    y = y0 - 2 * y1 + y2
+    xx = x0 - x1
+    yy = y0 - y1
+    
+    ## horizontal cut at P4? */
+    if (xx * (x2 - x1) > 0)  then
+    
+        ## vertical cut at P6 too? */
+        if (yy * (y2 - y1) > 0) then
+        
+            ## which first? */
+            if ((xx * y).abs > (yy * x).abs)  then
+                ## swap points */
+                x0 = x2
+                x2 = xx + x1
+                y0 = y2
+                y2 = yy + y1
+            end 
+            ## now horizontal cut at P4 comes first */
+        end
+        
+        if (x0 == x2 || w == 1.0) then
+            t = (x0 - x1) / x
+        else
+            ## non-rational or rational case */
+            q = Math.sqrt(4.0 * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (x2 - x0))
+            if (x1 < x0) then
+                q = -q
+            end
+            t = (2.0 * w * (x0 - x1) - x0 + x2 + q) / (2.0 * (1.0 - w) * (x2 -x0))## t at P4 */
+        end
+        
+        q = 1.0 / (2.0 * t * (1.0 - t) * (w - 1.0) + 1.0) ## sub-divide at t */
+        xx = (t * t * (x0 - 2.0 * w * x1 + x2) + 2.0 * t * (w * x1 - x0) + x0) * q ## = P4 */
+        yy = (t * t * (y0 - 2.0 * w * y1 + y2) + 2.0 * t * (w * y1 - y0) + y0) * q
+        ww = t * (w - 1.0) + 1.0
+        w = w * ww * q ## squared weight P3 */
+        w = ((1.0 - t) * (w - 1.0) + 1.0) * Math.sqrt(q) ## weight P8 */
+        x = (xx + 0.5).floor
+        y = (yy + 0.5).floor ## P4 */
+        yy = (xx - x0) * (y1 - y0) / (x1 - x0) + y0 ## intersect P3 | P0 P1 */
+        plotQuadRationalBezierSeg(x0, y0, z0, x, (yy + 0.5).floor, z0, x, y, z0, ww)
+        
+        yy = (xx - x2) * (y1 - y2) / (x1 - x2) + y2 ## intersect P4 | P1 P2 */
+        y1 = (yy + 0.5).floor
+        x0 = x1 = x
+        y0 = y ## P0 = P4, P1 = P8 */
+    end
+    
+    if ((y0 - y1) * (y2 - y1) > 0)  then
+        ## vertical cut at P6? */
+        if (y0 == y2 || w == 1.0) then
+            t = (y0 - y1) / (y0 - 2.0 * y1 + y2)
+        else
+            ## non-rational or rational case */
+            q = Math.sqrt(4.0 * w * w * (y0 - y1) * (y2 - y1) + (y2 - y0) * (y2 - y0))
+            if (y1 < y0) then
+                q = -q
+            end
+            t = (2.0 * w * (y0 - y1) - y0 + y2 + q) / (2.0 * (1.0 - w) * (y2 - y0)) ## t at P6 */
+        end
+        
+        q = 1.0 / (2.0 * t * (1.0 - t) * (w - 1.0) + 1.0) ## sub-divide at t */
+        xx = (t * t * (x0 - 2.0 * w * x1 + x2) + 2.0 * t * (w * x1 - x0) + x0) * q ## = P6 */
+        yy = (t * t * (y0 - 2.0 * w * y1 + y2) + 2.0 * t * (w * y1 - y0) + y0) * q
+        ww = t * (w - 1.0) + 1.0
+        ww = ww * ww * q ## squared weight P5 */
+        w = ((1.0 - t) * (w - 1.0) + 1.0) * Math.sqrt(q) ## weight P7 */
+        x = (xx + 0.5).floor
+        y = (yy + 0.5).floor ## P6 */
+        xx = (x1 - x0) * (yy - y0) / (y1 - y0) + x0 ## intersect P6 | P0 P1 */
+        plotQuadRationalBezierSeg(x0, y0, z0, (xx + 0.5).floor, y, z0, x, y, z0, ww)
+        
+        xx = (x1 - x2) * (yy - y2) / (y1 - y2) + x2 ## intersect P7 | P1 P2 */
+        x1 = (xx + 0.5).floor
+        x0 = x
+        y0 = y1 = y## P0 = P6, P1 = P7 */
+    end
+
+    ## plot remaining curve segment remaining */
+    plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z0, x2, y2, z0, w * w)
+end
+
+
+def plotRotatedEllipse(x, y, z, a, b, angle)
+    ## plot ellipse rotated by angle (radian) */
+    #taken from: http://members.chello.at/easyfilter/bresenham.pdf listing 13. Explicitly released without copyright
+    #Note: most of this function deals with the ellipse at the origin. Translation to coordinates is at final call.
+    
+    #x,y is the coodinates of the center
+    #a is __SEMI__major length
+    #b is __SEMI__minor length
+    #angle (radians), prob measured CCW from east
+    
+    #A far more readable paper on plotting rotated ellipses (no pseudocode): http://www.crbond.com/papers/ell_alg.pdf
+    #Another paper on rasterizing 2d primitives: https://cs.brown.edu/research/pubs/theses/masters/1989/dasilva.pdf
+
+    angle = -angle #deal with -y axis.
+    
+    xd = a * a
+    yd = b * b
+    
+    ## ellipse rotation */
+    s = Math.sin(angle)
+    zd = (xd - yd) * s
+    
+    ## surrounding rectangle */
+    xd = Math.sqrt(xd - zd * s)
+    yd = Math.sqrt(yd + zd * s)
+    
+    ## scale to integer */
+    a = xd + 0.5
+    b = yd + 0.5
+    zd = zd * a * b / (xd * yd)
+    
+    plotRotatedEllipseRect(x - a, y - b, z,   x + a, y + b,   (4 * zd * Math.cos(angle)))
+end
+
+
+
+def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd)
+    #http://members.chello.at/easyfilter/bresenham.pdf listing 13
+    #/* rectangle enclosing the ellipse, integer rotation angle */
+    #x0,y0 and x1,y1 are a bbox
+    #zd is rotation ? probably as 100*angle_in_radians?
+    ## rectangle enclosing the ellipse, integer rotation angle */
+    
+    xd = x1 - x0
+    yd = y1 - y0
+    w = xd * yd
+    
+    if (zd == 0)
+        #Special case: no rotation. Use standard method. /* looks nicer */
+        #this should never be reached, as we call this from the regular ellipse function.
+        puts "zd=0 degenerate case"
+        drawEllipse(x0,y0,z0, x1,y1,z0)
+        return
+    end
+    
+    ## squared weight of P1 */
+    if (w != 0.0) then
+        w = (w - zd) / (w + w)
+        end
+    
+    if not(w <= 1.0 && w >= 0.0) then  #/* limit angle to |zd|<=xd*yd */
+        puts "  Error: Limit angle to |zd|<=xd*yd"
+        throw :script_finished
+        end
+     
+    ## snap xe,ye to int */
+    xd = (xd * w + 0.5).floor
+    yd = (yd * w + 0.5).floor
+    
+    ##plot 4 sub arcs that make the ellipse
+    plotQuadRationalBezierSeg(x0, y0 + yd, z0,   x0, y0, z0,   x0 + xd, y0, z0,   1.0 - w)
+    plotQuadRationalBezierSeg(x0, y0 + yd, z0,   x0, y1, z0,   x1 - xd, y1, z0,   w)
+    plotQuadRationalBezierSeg(x1, y1 - yd, z0,   x1, y1, z0,   x1 - xd, y1, z0,   1.0 - w)
+    plotQuadRationalBezierSeg(x1, y1-yd, z0,   x1,y0, z0,   x0+xd,y0, z0,   w)
+end
+
+
 def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, digMode = 'd', mode = 'bbox')
     # A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf (https://www.dropbox.com/s/3q89g566u115g3q/belipse.pdf?dl=0)
     # also adapted from https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs used under the MIT license
+    
+    #p0 [xyz]: origin of major axis; OR a corner of bbox
+    #p1 [xyz]: termination of major axis; OR the other corner of the bbox
+    #p2 [xyz]: the extent (not a point nessisarily on the minor axis..) of the minor _radius_; aka, a point on the bounding box long side that will be used to determine the length of the short side.
 
     xl = [x0, x1].min # find left edge
     xr = [x0, x1].max # find right edge
@@ -174,14 +463,7 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
                 
                 xrad = yrad = rad
         end
-    end
-
-    if mode == 'axis' then
-        if (xl != xr) && (yt != yb) then
-            puts "  Error: Designate a horizontal or vertical diameter"
-            throw :script_finished
-        end
-
+    elsif mode == 'axis' then
         if (xl == xr) then
             #If x's equal, this is a vertical designation origin--major
             #find true x components
@@ -190,15 +472,34 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
             xl = xtemp + xrad
             xr = xtemp - xrad
 
-        else
+        elsif (yt == yb)
             #Horizontal origin--major
             #find true y components
             yrad = (y2 - yt).abs
             ytemp = yt
             yt = ytemp + yrad
             yb = ytemp - yrad
+        
+        else
+            #diagonal axis
+            #don't use xl,xr,yt,yb here, we need the points raw.
+            #p0: origin,   p1: major axis,    p2: minor axis
+            
+            radAngle = Math.atan2((y0 - y1), (x1 - x0)) #in radians
+            xc = (xl + xr)/2  #center
+            yc = (yt + yb)/2
+            
+            aaxis = Math.sqrt( (y1-y0)**2 + (x1-x0)**2)  #major (a) axis (full diameter)
+            #minor axis length: https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
+            baxis = 2*( (x1-x0) * (y0-y2)  -  (x0-x2) * (y1-y0)).abs / aaxis
+            
+            #use specific arbitrary ellipse function rather than the easy method.
+            plotRotatedEllipse(xc, yc, z0, aaxis/2, baxis/2, radAngle) #func expects axis lengths as radius (1/2)
+            return
         end
     end
+    
+    #Method for horizontal/vertical ellipses follows:
 
     # Avoid endless loop
     return if (xrad < 1 || yrad < 1)
@@ -374,6 +675,7 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw line after origin is set: digshape line"
     puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <fill:filled|hollow>"
     puts "..To draw an ellipse after origin is set (by major and minor axis): digshape major (must be horizontal or vertical), then digshape ellipse3p <fill:filled|hollow>"
+    puts "  To draw a 3 point bezier curve after origin and major are set: digshape bez <sharpness=1.5>"
     puts "..To draw a circle after origin is set, select any point as a diameter: digshape circle2p <fill:filled|hollow>"
     puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
     puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
@@ -480,6 +782,11 @@ case command
         end
     when 'ellipse3p' #digshape ellipse3p [filled] [digmode]
         if df.cursor.z == $originz then
+            if $majorx == nil then
+                puts "  Error: Set a point for the end of the major axis with the cursor and 'digshape major'"
+                throw :script_finished
+                end
+            
             filled = false
             case argument1
                 when 'filled'; filled = true
@@ -499,7 +806,20 @@ case command
 
             drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = filled, digMode = dig, mode = 'axis')
         else
-            puts "  Error: origin and target must be on the same z level"
+            puts "  Error: all control points must be on the same z level"
+            throw :script_finished
+        end
+    when 'bez' #digshape bez
+        #use origin and major as endpoints, cursor as curve shaper
+        if df.cursor.z == $originz then
+            if $majorx == nil then
+                    puts "  Error: Set an endpoint for the curve with the cursor and 'digshape major'"
+                    throw :script_finished
+                    end
+                
+            plotQuadRationalBezier($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, $majorx, $majory, $majorz, argument1.to_f)
+        else
+            puts "  Error: all control points must be on the same z level"
             throw :script_finished
         end
     when 'polygon'
