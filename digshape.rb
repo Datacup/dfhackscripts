@@ -698,6 +698,25 @@ def dig2enum(digMode)
     end
 end
 
+def digPermitted(digMode, tileShape_basic)
+    #can we dig on this tile?
+    
+    if not tileShape_basic then return false end
+    
+    case digMode
+        when 'd'; if tileShape_basic == :Wall then return true else return false end
+        when 'u'; if tileShape_basic == :Wall then return true else return false end
+        when 'j'; if tileShape_basic == :Wall || tileShape_basic == :Floor  then return true else return false end
+        when 'i'; if tileShape_basic == :Wall then return true else return false end
+        when 'h'; if tileShape_basic == :Wall || tileShape_basic == :Floor  then return true else return false end
+        when 'r'; if tileShape_basic == :Wall then return true else return false end
+        when 'x'; return true
+        else
+            puts "  Error: Unknown digtype"
+            throw :script_finished
+        end
+    end
+
 def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
     #targetDig: what designation type can we overwrite?
     #digMode: what designation are we placing?
@@ -733,9 +752,9 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
             xi = xw - 1 #move xw cursor west until it hits a match
             t=df.map_tile_at(xi,y,z)
             
-            if !t || xi == 0  || t.designation.dig != targetDig || t.shape_basic != :Wall then 
+            if !t || xi == 0  || t.designation.dig != targetDig || !digPermitted(digMode,t.shape_basic) then 
                 break
-                end
+            end
             xw = xi
         end
         
@@ -744,12 +763,12 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
             xi = xe + 1 #move xe cursor east until it hits a match
             t=df.map_tile_at(xi,y,z)
             
-            if !t || xi == 0  || t.designation.dig != targetDig || t.shape_basic != :Wall then 
+            if !t || xi == 0  || t.designation.dig != targetDig || !digPermitted(digMode,t.shape_basic) then 
                 break
-                end
+            end
             xe = xi
         end
-
+        
        #scan W..E filling, and checking N/S
         for xi in xw..xe do
             digAt(xi, y, z, digMode)
@@ -762,12 +781,12 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
             
             #check N/S
             t = df.map_tile_at(xi,y+1,z)
-            if t && t.designation.dig == targetDig then
+            if t && t.designation.dig == targetDig && digPermitted(digMode,t.shape_basic) then
                 xStack.push(xi)
                 yStack.push(y+1)
                 end
             t = df.map_tile_at(xi,y-1,z)
-            if t && t.designation.dig == targetDig then 
+            if t && t.designation.dig == targetDig && digPermitted(digMode,t.shape_basic) then 
                 xStack.push(xi)
                 yStack.push(y-1)
                 end
