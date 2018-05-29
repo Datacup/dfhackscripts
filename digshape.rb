@@ -19,6 +19,17 @@ Commands that require an origin to be set:
     
     To draw an ellipse using the origin and target as a bounding box:
         digshape ellipse (filled? [default: false])
+    
+    To draw an ellipse using the origin and target as a major axis, and the cursor as the length of the semiminor axis:
+        digshape major (to set the major axis endpoint)
+        digshape ellipse3p
+    
+    To draw a circle using an arbitrary diameter:
+        digshape circle2p
+    
+    To draw a 3 pt bezier curve, with an arbitrary float for weighting the sharpness:
+        digshape major (to set the end point of the curve)
+        digshape bez [sharpness=1.5]
       
     To draw a polygon using the origin as the center and the cursor as the radius|apothem (radius)
         digshape polygon <sides> [radius|apothem] [digMode]
@@ -127,7 +138,7 @@ def drawLine(x0, y0, z0, x1, y1, z1, digMode = 'd')
 end
 
 
-def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w)
+def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w, digMode = 'd')
     #/* plot a limited rational Bezier segment, squared weight */
     #http://members.chello.at/easyfilter/bresenham.pdf listing 12
     #p0:origin, p1:weight, p2:termination
@@ -205,7 +216,7 @@ def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w)
         err = dx + dy - xy ## error 1.step */
 
         loop do
-            digAt(x0,y0,z0, 'd')  #/* plot curve */
+            digAt(x0,y0,z0, digMode)  #/* plot curve */
 
             if (x0.floor == x2.floor && y0.floor == y2.floor) then
                 #/* last pixel -> curve finished */
@@ -240,12 +251,12 @@ def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w)
     end
     
     ## plot remaining needle to end */
-    drawLine(x0,y0,z0, x2,y2,z0)
+    drawLine(x0,y0,z0, x2,y2,z0, digMode)
 end
 
 
 
-def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5)
+def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5, digMode = 'd')
     #http://members.chello.at/easyfilter/bresenham.pdf listing 11
     ## plot any quadratic rational Bezier curve */
     
@@ -291,7 +302,7 @@ def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5)
         x = (xx + 0.5).floor
         y = (yy + 0.5).floor ## P4 */
         yy = (xx - x0) * (y1 - y0) / (x1 - x0) + y0 ## intersect P3 | P0 P1 */
-        plotQuadRationalBezierSeg(x0, y0, z0, x, (yy + 0.5).floor, z0, x, y, z0, ww)
+        plotQuadRationalBezierSeg(x0, y0, z0, x, (yy + 0.5).floor, z0, x, y, z0, ww, digMode)
         
         yy = (xx - x2) * (y1 - y2) / (x1 - x2) + y2 ## intersect P4 | P1 P2 */
         y1 = (yy + 0.5).floor
@@ -321,7 +332,7 @@ def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5)
         x = (xx + 0.5).floor
         y = (yy + 0.5).floor ## P6 */
         xx = (x1 - x0) * (yy - y0) / (y1 - y0) + x0 ## intersect P6 | P0 P1 */
-        plotQuadRationalBezierSeg(x0, y0, z0, (xx + 0.5).floor, y, z0, x, y, z0, ww)
+        plotQuadRationalBezierSeg(x0, y0, z0, (xx + 0.5).floor, y, z0, x, y, z0, ww, digMode)
         
         xx = (x1 - x2) * (yy - y2) / (y1 - y2) + x2 ## intersect P7 | P1 P2 */
         x1 = (xx + 0.5).floor
@@ -330,11 +341,11 @@ def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5)
     end
 
     ## plot remaining curve segment remaining */
-    plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z0, x2, y2, z0, w * w)
+    plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z0, x2, y2, z0, w * w, digMode)
 end
 
 
-def plotRotatedEllipse(x, y, z, a, b, angle)
+def plotRotatedEllipse(x, y, z, a, b, angle, digMode='d')
     ## plot ellipse rotated by angle (radian) */
     #taken from: http://members.chello.at/easyfilter/bresenham.pdf listing 13. Explicitly released without copyright
     #Note: most of this function deals with the ellipse at the origin. Translation to coordinates is at final call.
@@ -365,12 +376,12 @@ def plotRotatedEllipse(x, y, z, a, b, angle)
     b = yd + 0.5
     zd = zd * a * b / (xd * yd)
     
-    plotRotatedEllipseRect(x - a, y - b, z,   x + a, y + b,   (4 * zd * Math.cos(angle)))
+    plotRotatedEllipseRect(x - a, y - b, z,   x + a, y + b,   (4 * zd * Math.cos(angle)), digMode)
 end
 
 
 
-def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd)
+def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd, digMode='d')
     #http://members.chello.at/easyfilter/bresenham.pdf listing 13
     #/* rectangle enclosing the ellipse, integer rotation angle */
     #x0,y0 and x1,y1 are a bbox
@@ -404,10 +415,10 @@ def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd)
     yd = (yd * w + 0.5).floor
     
     ##plot 4 sub arcs that make the ellipse
-    plotQuadRationalBezierSeg(x0, y0 + yd, z0,   x0, y0, z0,   x0 + xd, y0, z0,   1.0 - w)
-    plotQuadRationalBezierSeg(x0, y0 + yd, z0,   x0, y1, z0,   x1 - xd, y1, z0,   w)
-    plotQuadRationalBezierSeg(x1, y1 - yd, z0,   x1, y1, z0,   x1 - xd, y1, z0,   1.0 - w)
-    plotQuadRationalBezierSeg(x1, y1-yd, z0,   x1,y0, z0,   x0+xd,y0, z0,   w)
+    plotQuadRationalBezierSeg(x0, y0 + yd, z0,   x0, y0, z0,   x0 + xd, y0, z0,   1.0 - w, digMode)
+    plotQuadRationalBezierSeg(x0, y0 + yd, z0,   x0, y1, z0,   x1 - xd, y1, z0,   w, digMode)
+    plotQuadRationalBezierSeg(x1, y1 - yd, z0,   x1, y1, z0,   x1 - xd, y1, z0,   1.0 - w, digMode)
+    plotQuadRationalBezierSeg(x1, y1-yd, z0,   x1,y0, z0,   x0+xd,y0, z0,   w, digMode)
 end
 
 
@@ -494,12 +505,12 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
             baxis = 2*( (x1-x0) * (y0-y2)  -  (x0-x2) * (y1-y0)).abs / aaxis
             
             #use specific arbitrary ellipse function rather than the easy method.
-            plotRotatedEllipse(xc, yc, z0, aaxis/2, baxis/2, radAngle) #func expects axis lengths as radius (1/2)
+            plotRotatedEllipse(xc, yc, z0, aaxis/2, baxis/2, radAngle, digMode) #func expects axis lengths as radius (1/2)
             return
         end
     end
     
-    #Method for horizontal/vertical ellipses follows:
+    #Method for horizontal/vertical ellipses and 2p circles follows:
 
     # Avoid endless loop
     return if (xrad < 1 || yrad < 1)
@@ -827,7 +838,12 @@ case command
                 weight = 1.5 
             end
             
-            plotQuadRationalBezier($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, $majorx, $majory, $majorz, weight)
+            dig = getDigMode(argument1) #check argument 1 for dig instructions
+            if argument2 then # if argument 2 is present, look at that for dig instructions
+                dig = getDigMode(argument2)
+            end
+            
+            plotQuadRationalBezier($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, $majorx, $majory, $majorz, weight, dig)
         else
             puts "  Error: all control points must be on the same z level"
             throw :script_finished
