@@ -8,6 +8,8 @@ Commands that do not require a set origin:
 
     To dig a 3x3 sparse up-down stairway:
         digshape downstair <depth>
+    
+    To undo the previous command (restoring designation): digshape undo
 
 Commands that require an origin to be set:
 
@@ -54,8 +56,42 @@ def markOrigin(ox, oy, oz)
     end
 end
 
-def digAt(x, y, z, digMode = 'd')
+
+def unDig()
+    #Exicute one level of undo.
+    #z level is presumed to be the current.
+    i=$digBufferX.length
+    while i >= 0 do
+        x=$digBufferX.pop
+        y=$digBufferY.pop
+        d=$digBufferD.pop
+        
+        digAt(x,y,df.cursor.z, enum2dig(d), buffer=false)
+        i = i-1
+        end
+    #clear buffer for next dig.
+    clearDigBuffer()
+end
+
+
+def clearDigBuffer()
+    #clear buffer for next dig, or initialize it's existance on first run.
+    $digBufferX=[]
+    $digBufferY=[]
+    $digBufferD=[]
+end
+
+
+def digAt(x, y, z, digMode = 'd', buffer=true)
     t = df.map_tile_at(x, y, z)
+    
+    #store the current tile's designation in a undo buffer
+    if buffer then
+        $digBufferX.push(x)
+        $digBufferY.push(y)
+        $digBufferD.push(t.designation.dig)
+    end
+    
 
     # check if the tile returned is valid, ignore if its not (out of bounds, air, etc)
     if t then
@@ -698,6 +734,23 @@ def dig2enum(digMode)
     end
 end
 
+
+def enum2dig(digEnum)
+    #this function turns a designation enum into the appropriate digtype character
+    case digEnum #from https://github.com/DFHack/scripts/blob/master/digfort.rb
+        when :Default; return 'd'
+        when :UpStair; return 'u'
+        when :DownStair; return 'j'
+        when :UpDownStair; return 'i'
+        when :Channel; return 'h'
+        when :Ramp; return 'r'
+        when :No; return 'x'
+        else
+            puts "  Error: Unknown digEnum"
+            throw :script_finished
+    end
+end
+
 def digPermitted(digMode, tileShape_basic)
     #can we dig on this tile?
     
@@ -812,6 +865,7 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
     puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
     puts "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
+    puts "  To undo the previous command (restoring designation): digshape undo"
     puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
@@ -830,6 +884,10 @@ if command=="o" or command=="set" then #alias
     command="origin"
 elsif command=="keupo" or command=="stairs" or command=="downstairs" then
     command="downstair"
+end
+
+if command != 'undo' then
+    clearDigBuffer() #clear the dig buffer so we can undo the following command. Or initialize it's first run
 end
 
 case command
@@ -1050,6 +1108,8 @@ case command
 
         floodfill(df.cursor.x, df.cursor.y, df.cursor.z, targetDig, dig, maxArea)
         throw :script_finished
+    when 'undo'
+        unDig()
     else
         puts "  Error: Invalid command"
         throw :script_finished
