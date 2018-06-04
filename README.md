@@ -57,6 +57,10 @@ in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
 *Fill an area with a dig designation. Will only fill tiles that match the designation under the cursor.*  
 *Note: Larger max coverages can take time to fill. A great way to fill in the above shapes.*
 
+## undo last digshape command
+        digshape undo
+*restores designations for the last digshape command. Will not record manual or other commands designations, but won't loose it's record.*
+
 # Contributors
 
 - flipvine
