@@ -61,6 +61,10 @@ in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
         digshape undo
 *restores designations for the last digshape command. Will not record manual or other commands designations, but won't loose it's record.*
 
+## move all markers to the current z level
+        digshape resetz
+*moves the markers (origin, major) to the current z level*
+
 # Contributors
 
 - flipvine

@@ -38,6 +38,9 @@ Commands that require an origin to be set:
     
     To flood fill with a designation, overwriting ONLY the designation under the cursor:
         digshape flood
+    
+    To move all of the markers to the current z level:
+        digshape resetz
 
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
@@ -189,7 +192,7 @@ def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w, digMode = '
     y0 = y0.floor
     y1 = y1.floor
     y2 = y2.floor
-    
+
     sx = x2 - x1 ## relative values for checks */
     sy = y2 - y1
     dx = x0 - x2
@@ -298,7 +301,7 @@ end
 def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5, digMode = 'd')
     #http://members.chello.at/easyfilter/bresenham.pdf listing 11
     ## plot any quadratic rational Bezier curve */
-    
+
     x = x0 - 2 * x1 + x2
     y = y0 - 2 * y1 + y2
     xx = x0 - x1
@@ -322,7 +325,7 @@ def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5, digMode
         end
         
         if (x0 == x2 || w == 1.0) then
-            t = (x0 - x1) / x
+            t = ((x0 - x1) / x.to_f)  #ruby implicitly decides this is an integer and rounds it here without the expicit .to_f on that whole number.
         else
             ## non-rational or rational case */
             q = Math.sqrt(4.0 * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (x2 - x0))
@@ -866,6 +869,7 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
     puts "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
     puts "  To undo the previous command (restoring designation): digshape undo"
+    puts "  To move all markers to the current z level (without displaying them): digshape resetz"
     puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
@@ -897,6 +901,8 @@ case command
         $originz = df.cursor.z
 
         markOrigin($originx, $originy, $originz)
+    when 'resetz'
+        $originz = $majorz = df.cursor.z
     when 'line'
         dig = getDigMode(argument1)
 
