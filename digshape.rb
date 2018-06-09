@@ -192,7 +192,7 @@ def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w, digMode = '
     y0 = y0.floor
     y1 = y1.floor
     y2 = y2.floor
-    
+
     sx = x2 - x1 ## relative values for checks */
     sy = y2 - y1
     dx = x0 - x2
@@ -301,7 +301,7 @@ end
 def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5, digMode = 'd')
     #http://members.chello.at/easyfilter/bresenham.pdf listing 11
     ## plot any quadratic rational Bezier curve */
-    
+
     x = x0 - 2 * x1 + x2
     y = y0 - 2 * y1 + y2
     xx = x0 - x1
@@ -325,7 +325,7 @@ def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5, digMode
         end
         
         if (x0 == x2 || w == 1.0) then
-            t = (x0 - x1) / x
+            t = ((x0 - x1) / x.to_f)  #ruby implicitly decides this is an integer and rounds it here without the expicit .to_f on that whole number.
         else
             ## non-rational or rational case */
             q = Math.sqrt(4.0 * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (x2 - x0))
