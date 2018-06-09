@@ -38,6 +38,9 @@ Commands that require an origin to be set:
     
     To flood fill with a designation, overwriting ONLY the designation under the cursor:
         digshape flood
+    
+    To move all of the markers to the current z level:
+        digshape resetz
 
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
@@ -866,6 +869,7 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
     puts "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
     puts "  To undo the previous command (restoring designation): digshape undo"
+    puts "  To move all markers to the current z level (without displaying them): digshape resetz"
     puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
@@ -897,6 +901,8 @@ case command
         $originz = df.cursor.z
 
         markOrigin($originx, $originy, $originz)
+    when 'resetz'
+        $originz = $majorz = df.cursor.z
     when 'line'
         dig = getDigMode(argument1)
 
