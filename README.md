@@ -12,49 +12,63 @@ for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs w
 ## set mark
 	digshape origin
 
+*The origin is used for most drawing operations. It persists between operations. It is Step 1 in any of the following operations.*
+
 ## draw a line
 	digshape line
-*from cursor to mark*
+*draws a straight line from cursor to mark*
 
 ## draw an ellipse
 	digshape ellipse [filled]
-*mark and cursor as bounding box*
+*Step 2: draw an ellipse contained within the bounding box formed of the mark and current cursor.*
 
 ### draw an ellipse using 3 pt
 	digshape major  
-*set the end of the major axis from mark to cursor*
+*Step 2: set the end of the major axis from mark to cursor.*
 
 	digshape ellipse3p
-*draw the ellipse using new cursor as the semiminor axis length (midpoint of major axis->cursor)*  
+*Step 3: draw the ellipse using new cursor as the semiminor axis length (midpoint of major axis->cursor)*  
 *Note: ellipse3p cannot yet be filled by an argument, use flood*
 
 ## draw a circle with arbitrary diameter
 	digshape circle2p
-*mark and cursor form the diameter of the circle (at any tilt)*
+*Step 2: mark and cursor form the diameter of the circle (at any tilt).*
 
 ## draw a 3 pt bezier curve
 	digshape major
-*set the endpoint of the curve*
+*Step 2: set the endpoint of the curve*
 
 	digshape bez [sharpness=1.5]
-*draw the curve between mark and endpoint, pulled towards the cursor. A weight may be specified to adjust the sharpness of the curve [0=straight line, large number=hairpin).*
+*Step 3: draw the curve between mark and endpoint, pulled towards the cursor. A weight may be specified to adjust the sharpness of the curve [0=straight line, large number=hairpin).*
+
+_eg:_ draw a bezier curve\
+Step 1: place start of curve at cursor: `digshape origin`\
+Step 2: move cursor to end of curve, then: `digshape major`\
+Step 3: move cursor to the side of the line to be the control point for the curve, then: `digshape bez`, or `digshape bez 9` for a curve that gets closer to the cursor.
 
 ## draw a polygon with cursor as vertex
 	digshape polygon <n sides>
-*mark as center and cursor as a vertex*
+*Step 2: draw a polygon with  sides using the mark as center and cursor as a vertex*
+
+_eg:_ `digshape polygon 5 h`: draws a pentagram of channel designations, with the mark as the center, and the cursor as one of the verticies. \
+_eg:_ `digshape polygon 6`: draws a hexagon of dig designations, with the mark as the center, and the cursor as one of the verticies.
 
 ## draw a polygon with cursor as apothem
 	digshape polygon <n sides> apothem
-*mark as center and cursor as a midpoint*
+*Step 2: Draw a polygon with n sides, with the mark as center, and cursor as a midpoint of one of the sides [apothem, like a radius]*
 
 ## draw a star polygon
 	digshape star <n sides> [skip=2]
 in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbol)
 *mark as center and cursor as a vertex*
 
+## draw a point with n-fold symmetry
+	digshape star <n sides> <n sides>
+*Step 2: draw a point at the cursor, and at n points around the origin at the same radius, as though they were verticies of a star without drawing the connecting lines. (eg for 5fold: "digshape star 5 5"). It is helpful to bind this to a keycombo, so that it can be used to draw.*
+
 ## flood fill an area
         digshape flood [max coverage=10000]
-*Fill an area with a dig designation. Will only fill tiles that match the designation under the cursor.*  
+*Fill an area with a dig designation. Will only fill tiles that match the designation under the cursor. Ignores/does not require the origin to be set.*  
 *Note: Larger max coverages can take time to fill. A great way to fill in the above shapes.*
 
 ## undo last digshape command
