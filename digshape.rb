@@ -51,33 +51,113 @@ Commands that require an origin to be set:
 TODO: mark origin should not change the digging designation, ellipse cleanup should restore not clear it.
 
 =end
-
-def markOrigin(ox, oy, oz)
-    t = df.map_tile_at(ox, oy, oz)
-    if t then
-        s = t.shape_basic
-        #TODO: preseve designation:
-        #$originTile = t.designation # a global to store the original origin state
-        #puts "origin: #{$originTile}"
-        t.dig(:Default) if s == :Wall
+DigPos = Struct.new(:x, :y, :z) do
+    def to_s
+      return "(#{x},#{y},#{z})"
+    end
+    def clone
+        return DigPos.new(x,y,z)
     end
 end
 
+def cursorAsDigPos()
+    return DigPos.new(df.cursor.x, df.cursor.y, df.cursor.z)
+end
 
-def unDig()
-    #Exicute one level of undo.
+# really nasty hack so that lua can use digshape
+$isLuaMode = $script_args[0] == "lua"
+$isPreviewOnly = false
+
+if $isLuaMode then
+    $script_args.delete_at(0)
+    $isPreviewOnly = $script_args[0] == "preview"
+    if $isPreviewOnly then
+        $script_args.delete_at(0)
+    end
+    $output
+end
+
+def writeLuaPos(name, digPos) # pos:<name>:<X>:<Y>:<Z>
+    if $isLuaMode then
+        puts "pos:#{name}:#{digPos.to_s}"
+    end
+end
+
+def setOrigin(x, y, z)  # sets the origin and marks if it iff we are in console. cleans up last mark too.
+    $origin = DigPos.new(x,y,z)
+    # the rest is just really complicated logic to mark the origin if the user is using the console version
+    # it also has to play well with lua
+
+    if $oldOrigin then
+        oldTile = df.map_tile_at($oldOrigin.x, $oldOrigin.y, $oldOrigin.z)
+        oldTile.dig($oldOriginDesignation) if oldTile.shape_basic == $oldOriginShape && oldTile.designation.dig == digMode2enum('d')
+    end
+    if not $isLuaMode then
+        $oldOrigin = $origin.clone()
+        newOriginTile = df.map_tile_at($origin.x, $origin.y, $origin.z)
+        $oldOriginDesignation = newOriginTile.designation.dig
+        $oldOriginShape = newOriginTile.shape_basic
+
+        digAt($origin.x, $origin.y, $origin.z, 'd', buffer: false) 
+    else
+        $oldOrigin = nil # don't undo our origins if we are in lua mode
+    end
+end
+
+def setMajor(x, y, z)
+    $major = DigPos.new(x,y,z)
+end
+
+def stdout(msg)
+    if $isLuaMode == false then
+        puts msg
+    else
+        puts "msg:"+msg
+    end
+end
+
+def stderr(msg) # write an error mesage
+    if $isLuaMode == false then
+        puts "  Error: "+msg
+    else
+        puts "err:"+msg
+    end
+end
+
+def scriptError(msg) # call this when you reach corner cases / the fault perhaps isn't the user
+    stderr(msg)
+    raise "oopsie! script errored! ;)"
+end
+
+def userSucks(msg) # call this when we don't like the user's input
+    stderr(msg)
+    throw :script_finished
+end
+
+
+
+def undo() # BUG! Does not keep track of Z levels
+    #Execute one level of undo.
     #z level is presumed to be the current.
+    # todo, have multiple levels of undo / redo
     i=$digBufferX.length
-    while i >= 0 do
+    newBufferX = []
+    newBufferY = []
+    newBufferZ = [] # redundant, i.e. always the same most of the time, but needed so that we use it as a pointer for digAt. Also supports digging multi dimenisional shapes
+    newBufferD = []
+    while i > 0 do
         x=$digBufferX.pop
         y=$digBufferY.pop
+        z=$digBufferZ.pop
         d=$digBufferD.pop
-        
-        digAt(x,y,df.cursor.z, enum2dig(d), buffer=false)
+        digAt(x,y,z, enum2digMode(d), buffer: true, bufferX: newBufferX, bufferY: newBufferY, bufferZ: newBufferZ, bufferD: newBufferD)
         i = i-1
-        end
-    #clear buffer for next dig.
-    clearDigBuffer()
+    end
+    #clear buffer for next dig
+    $digBufferX = newBufferX
+    $digBufferY = newBufferY
+    $digBufferZ = newBufferZ
+    $digBufferD = newBufferD
 end
 
 
@@ -85,39 +165,82 @@ def clearDigBuffer()
     #clear buffer for next dig, or initialize it's existance on first run.
     $digBufferX=[]
     $digBufferY=[]
+    $digBufferZ=[]
     $digBufferD=[]
 end
 
-
-def digAt(x, y, z, digMode = 'd', buffer=true)
-    t = df.map_tile_at(x, y, z)
-    
-    #store the current tile's designation in a undo buffer
-    if buffer then
-        $digBufferX.push(x)
-        $digBufferY.push(y)
-        $digBufferD.push(t.designation.dig)
+def digMode2enum(digMode)
+    #this function turns a digmode into the appropriate enum for easier comparison on tile reading (eg floodfill.)
+    case digMode #from https://github.com/DFHack/scripts/blob/master/digfort.rb
+        when 'd'; return :Default
+        when 'u'; return :UpStair
+        when 'j'; return :DownStair
+        when 'i'; return :UpDownStair
+        when 'h'; return :Channel
+        when 'r'; return :Ramp
+        when 'x'; return :No
+        else
+            scriptError("Unknown digMode, `"+digMode+"', digMode must be any of 'd', 'u', 'j', 'i', 'h', 'r', or 'x', which correspond to the designation keys")
     end
+end
+
+
+def enum2digMode(digEnum)
+    #this function turns a designation enum into the appropriate digtype character
+    case digEnum #from https://github.com/DFHack/scripts/blob/master/digfort.rb
+        when :Default; return 'd'
+        when :UpStair; return 'u'
+        when :DownStair; return 'j'
+        when :UpDownStair; return 'i'
+        when :Channel; return 'h'
+        when :Ramp; return 'r'
+        when :No; return 'x'
+        else
+            scriptError("Unknown digEnum `#{digEnum.to_s}'")
+    end
+end
+
+def isDigPermitted(digMode, tileShape)
+    # can we dig on this tile?
     
+    if not tileShape then return false end
+    
+    case digMode
+        when 'd', 'u', 'i', 'r'; return tileShape == :Wall
+        when 'j', 'h'; return tileShape == :Wall || tileShape == :Floor
+        when 'x'; return true
+        else
+            scriptError("Unknown digMode: `"+digMode+"'")
+    end
+end
+
+def digAt(x, y, z, digMode = 'd', buffer: true, bufferX: $digBufferX, bufferY: $digBufferY, bufferZ: $digBufferZ, bufferD: $digBufferD)
+    tile = df.map_tile_at(x, y, z)
 
     # check if the tile returned is valid, ignore if its not (out of bounds, air, etc)
-    if t then
-        s = t.shape_basic
+    if tile then
+        tileShape = tile.shape_basic
 
-        case digMode #from https://github.com/DFHack/scripts/blob/master/digfort.rb
-            when 'd'; t.dig(:Default) if s == :Wall
-            when 'u'; t.dig(:UpStair) if s == :Wall
-            when 'j'; t.dig(:DownStair) if s == :Wall or s == :Floor
-            when 'i'; t.dig(:UpDownStair) if s == :Wall
-            when 'h'; t.dig(:Channel) if s == :Wall or s == :Floor
-            when 'r'; t.dig(:Ramp) if s == :Wall
-            when 'x'; t.dig(:No)
+        if isDigPermitted(digMode, tileShape) then
+            if $isPreviewOnly then
+                puts "dig:"+digMode+":"+x.to_s+":"+y.to_s+":"+z.to_s
             else
-                puts "  Error: Unknown digtype"
-                throw :script_finished
+                if buffer then # store the current tile's designation in a undo buffer
+                    bufferX.push(x)
+                    bufferY.push(y)
+                    bufferZ.push(z)
+                    bufferD.push(tile.designation.dig)
+                    
+                end
+                tile.dig(digMode2enum(digMode))
+            end
         end
     end
 end
+
+
+
+
 
 # https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 def drawLineLow(x0, y0, z0, x1, y1, z1, digMode = 'd')
@@ -182,7 +305,6 @@ def drawLine(x0, y0, z0, x1, y1, z1, digMode = 'd')
         end
     end
 end
-
 
 def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w, digMode = 'd')
     #/* plot a limited rational Bezier segment, squared weight */
@@ -300,8 +422,6 @@ def plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z1, x2, y2, z2, w, digMode = '
     drawLine(x0,y0,z0, x2,y2,z0, digMode)
 end
 
-
-
 def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5, digMode = 'd')
     #http://members.chello.at/easyfilter/bresenham.pdf listing 11
     ## plot any quadratic rational Bezier curve */
@@ -390,7 +510,6 @@ def plotQuadRationalBezier(x0, y0, z0,  x1, y1, z1,  x2, y2, z2,  w=1.5, digMode
     plotQuadRationalBezierSeg(x0, y0, z0, x1, y1, z0, x2, y2, z0, w * w, digMode)
 end
 
-
 def plotRotatedEllipse(x, y, z, a, b, angle, digMode='d')
     ## plot ellipse rotated by angle (radian) */
     #taken from: http://members.chello.at/easyfilter/bresenham.pdf listing 13. Explicitly released without copyright
@@ -425,8 +544,6 @@ def plotRotatedEllipse(x, y, z, a, b, angle, digMode='d')
     plotRotatedEllipseRect(x - a, y - b, z,   x + a, y + b,   (4 * zd * Math.cos(angle)), digMode)
 end
 
-
-
 def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd, digMode='d')
     #http://members.chello.at/easyfilter/bresenham.pdf listing 13
     #/* rectangle enclosing the ellipse, integer rotation angle */
@@ -441,7 +558,7 @@ def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd, digMode='d')
     if (zd == 0)
         #Special case: no rotation. Use standard method. /* looks nicer */
         #this should never be reached, as we call this from the regular ellipse function.
-        puts "zd=0 degenerate case"
+        stdout "zd=0 degenerate case"
         drawEllipse(x0,y0,z0, x1,y1,z0)
         return
     end
@@ -449,12 +566,11 @@ def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd, digMode='d')
     ## squared weight of P1 */
     if (w != 0.0) then
         w = (w - zd) / (w + w)
-        end
+    end
     
     if not(w <= 1.0 && w >= 0.0) then  #/* limit angle to |zd|<=xd*yd */
-        puts "  Error: Limit angle to |zd|<=xd*yd"
-        throw :script_finished
-        end
+        scriptError "Limit angle to |zd|<=xd*yd"
+    end
      
     ## snap xe,ye to int */
     xd = (xd * w + 0.5).floor
@@ -466,7 +582,6 @@ def plotRotatedEllipseRect(x0, y0, z0, x1, y1, zd, digMode='d')
     plotQuadRationalBezierSeg(x1, y1 - yd, z0,   x1, y1, z0,   x1 - xd, y1, z0,   1.0 - w, digMode)
     plotQuadRationalBezierSeg(x1, y1-yd, z0,   x1,y0, z0,   x0+xd,y0, z0,   w, digMode)
 end
-
 
 def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, digMode = 'd', mode = 'bbox')
     # A Fast Bresenham Type Algorithm For Drawing Ellipses http://homepage.smc.edu/kennedy_john/belipse.pdf (https://www.dropbox.com/s/3q89g566u115g3q/belipse.pdf?dl=0)
@@ -725,57 +840,7 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
     end
 end
 
-def dig2enum(digMode)
-    #this function turns a digmode into the appropriate enum for easier comparison on tile reading (eg floodfill.)
-    case digMode #from https://github.com/DFHack/scripts/blob/master/digfort.rb
-        when 'd'; return :Default
-        when 'u'; return :UpStair
-        when 'j'; return :DownStair
-        when 'i'; return :UpDownStair
-        when 'h'; return :Channel
-        when 'r'; return :Ramp
-        when 'x'; return :No
-        else
-            puts "  Error: Unknown digtype"
-            throw :script_finished
-    end
-end
 
-
-def enum2dig(digEnum)
-    #this function turns a designation enum into the appropriate digtype character
-    case digEnum #from https://github.com/DFHack/scripts/blob/master/digfort.rb
-        when :Default; return 'd'
-        when :UpStair; return 'u'
-        when :DownStair; return 'j'
-        when :UpDownStair; return 'i'
-        when :Channel; return 'h'
-        when :Ramp; return 'r'
-        when :No; return 'x'
-        else
-            puts "  Error: Unknown digEnum"
-            throw :script_finished
-    end
-end
-
-def digPermitted(digMode, tileShape_basic)
-    #can we dig on this tile?
-    
-    if not tileShape_basic then return false end
-    
-    case digMode
-        when 'd'; if tileShape_basic == :Wall then return true else return false end
-        when 'u'; if tileShape_basic == :Wall then return true else return false end
-        when 'j'; if tileShape_basic == :Wall || tileShape_basic == :Floor  then return true else return false end
-        when 'i'; if tileShape_basic == :Wall then return true else return false end
-        when 'h'; if tileShape_basic == :Wall || tileShape_basic == :Floor  then return true else return false end
-        when 'r'; if tileShape_basic == :Wall then return true else return false end
-        when 'x'; return true
-        else
-            puts "  Error: Unknown digtype"
-            throw :script_finished
-        end
-    end
 
 def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
     #targetDig: what designation type can we overwrite?
@@ -787,14 +852,16 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
     
     if not t then
         #ignore impossible tiles (eg air.)
+        stdout "Tile does not exist"
         throw :script_finished
         return
     end
     
-    digNum = dig2enum(digMode) #Stash this, we'll use it many times.
+    digNum = digMode2enum(digMode) #Stash this, we'll use it many times.
     
     if t.designation.dig == digNum then
         #don't dig tiles that are already dug
+        stdout "Tile is already dug"
         throw :script_finished
         return
     end
@@ -812,7 +879,7 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
             xi = xw - 1 #move xw cursor west until it hits a match
             t=df.map_tile_at(xi,y,z)
             
-            if !t || xi == 0  || t.designation.dig != targetDig || !digPermitted(digMode,t.shape_basic) then 
+            if !t || xi == 0  || t.designation.dig != targetDig || !isDigPermitted(digMode,t.shape_basic) then 
                 break
             end
             xw = xi
@@ -823,7 +890,7 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
             xi = xe + 1 #move xe cursor east until it hits a match
             t=df.map_tile_at(xi,y,z)
             
-            if !t || xi == 0  || t.designation.dig != targetDig || !digPermitted(digMode,t.shape_basic) then 
+            if !t || xi == 0  || t.designation.dig != targetDig || !isDigPermitted(digMode,t.shape_basic) then 
                 break
             end
             xe = xi
@@ -835,18 +902,20 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
             
             counter = counter -1
             if counter <=0 then 
-                puts "  Max coverage of #{maxCounter} tiles reached. Use multiple floods, or add a number for max coverage as 'digshape flood [max coverage] [dig type]'."
+                stdout "  Max coverage of #{maxCounter} tiles reached. Use multiple floods, or add a number for max coverage as 'digshape flood [max coverage] [dig type]'."
+                stdout "  Automatically cancelling flood"
+                undo()
                 return 
             end
             
             #check N/S
             t = df.map_tile_at(xi,y+1,z)
-            if t && t.designation.dig == targetDig && digPermitted(digMode,t.shape_basic) then
+            if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then
                 xStack.push(xi)
                 yStack.push(y+1)
                 end
             t = df.map_tile_at(xi,y-1,z)
-            if t && t.designation.dig == targetDig && digPermitted(digMode,t.shape_basic) then 
+            if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then 
                 xStack.push(xi)
                 yStack.push(y-1)
                 end
@@ -907,283 +976,324 @@ end
 # script execution start
 
 if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
-    puts "  To draw downstair: digshape downstair depth"
-    puts "  To set origin: digshape origin"
-    puts "  To draw line after origin is set: digshape line"
-    puts "  To draw ellipse after origin is set (as bounding box): digshape ellipse <fill:filled|hollow>"
-    puts "..To draw an ellipse after origin is set (by major and minor axis): digshape major (must be horizontal or vertical), then digshape ellipse3p"
-    puts "  To draw a 3 point bezier curve after origin and major are set: digshape bez <sharpness=1.5>"
-    puts "..To draw a circle after origin is set, select any point as a diameter: digshape circle2p <fill:filled|hollow>"
-    puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
-    puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
-    puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
-	puts "To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
+    stdout "  To draw downstair: digshape downstair depth"
+    stdout "  To set origin: digshape origin"
+    stdout "  To draw line after origin is set: digshape line"
+    stdout "  To draw ellipse after origin is set (as bounding box): digshape ellipse <fill:filled|hollow>"
+    stdout "..To draw an ellipse after origin is set (by major and minor axis): digshape major (must be horizontal or vertical), then digshape ellipse3p"
+    stdout "  To draw a 3 point bezier curve after origin and major are set: digshape bez <sharpness=1.5>"
+    stdout "..To draw a circle after origin is set, select any point as a diameter: digshape circle2p <fill:filled|hollow>"
+    stdout "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
+    stdout "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
+    stdout "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
+	stdout "To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
             digshape spiral <coils> <chord>"
-    puts "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
-    puts "  To undo the previous command (restoring designation): digshape undo"
-    puts "  To move all markers to the current z level (without displaying them): digshape resetz"
-    puts "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
+    stdout "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
+    stdout "  To undo the previous command (restoring designation): digshape undo"
+    stdout "  To move all markers to the current z level (without displaying them): digshape resetz"
+    stdout "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
 
 command = $script_args[0]
-argument1 = $script_args[1]
-argument2 = $script_args[2]
-argument3 = $script_args[3]
+$script_args.delete_at(0)
 
 if df.cursor.x == -30000 then
-    puts "  Error: cursor must be on map"
-    throw :script_finished
+    userSucks "Cursor must be on map"
 end
 
-if command=="o" or command=="set" then #alias
-    command="origin"
-elsif command=="keupo" or command=="stairs" or command=="downstairs" then
-    command="downstair"
-end
-
-if command != 'undo' then
+if not (command == 'undo' or command=='u') and not $isPreviewOnly then
     clearDigBuffer() #clear the dig buffer so we can undo the following command. Or initialize it's first run
 end
 
+def requireOriginZLevel(msg: "Origin and target must be on the same z-level (use command 'digshape resetz' or 'digshape setz [Z-level, default=Cursor Z]' to fix)")
+    if df.cursor.z != $origin.z then
+        userSucks(msg)
+    end
+    writeLuaPos("origin",$origin) # visualize them for the user
+end
+
+def requireMajor(msg: "Set a point for the end of the major axis with the cursor and 'digshape major'")
+    if $major == nil then
+        userSucks(msg)
+    end
+    requireOriginZLevel()
+    writeLuaPos("origin", $origin)  # visualize them for the user
+    writeLuaPos("major", $major)    # visualize them for the user
+end
+
+def getDigModeArgument(args)
+    argument = args[0] 
+    digMode = getDigMode(argument)
+    args.delete_at(0)
+
+    return digMode
+end
+
+def getFilledArgument(args, default: false) # this doesn't *expect* and argument and so only consumes an argument when something matches
+    argument = args[0]
+    case argument
+        when 'filled', 'f', 'true', 'yes', 'y'; filled = true
+        when 'hollow', 'h', 'false', 'no', 'n'; filled = false
+        else
+            return default # doesn't consume if nothing matches
+    end
+    args.delete_at(0);
+    return filled
+end
+
+def getFloatArgument(args, default: nil, type: "(unnamed number)", positive: true)
+    num = args[0]
+    result = nil
+    defaultMessage = ""
+
+    if default != nil then
+        defaultMessage = "Use `-' for the default value (#{default})"
+    end
+
+    if not num then
+        userSucks("Must supply #{type} parameter (number).#{defaultMessage}")
+    end
+    args.delete_at(0)
+    
+    case num
+        when 'default','-';
+            userSucks("No default value for #{type} parameter!") if default == nil
+            result = default 
+        else
+            result = Float(num) rescue userSucks("Malformed number for "+type+" parameter, got `"+num+"'.#{defaultMessage}")
+    end
+
+    if positive && result<0 then 
+        userSucks("Expected positive number for #{type} parameter, got `#{num}'.#{defaultMessage}")
+    end
+    
+    return result
+end
+
+def getIntegerArgument(args, default: nil, type: "(unnamed integer)", positive: true)
+    num = args[0]
+    result = nil
+    defaultMessage = ""
+
+    if default != nil then
+        defaultMessage = "Use `-' for the default value (#{default})"
+    end
+
+    if not num then
+        userSucks("Must supply #{type} parameter (integer).#{defaultMessage}")
+    end
+    args.delete_at(0)
+    
+    case num
+        when 'default','-';
+            userSucks("No default value for #{type} parameter!") if default == nil
+            result = default 
+        else
+            result = Integer(num) rescue userSucks("Malformed integer for "+type+" parameter, got `"+num+"'.#{defaultMessage}")
+    end
+
+    if positive && result<0 then 
+        userSucks("Expected positive integer for #{type} parameter, got `#{num}'.#{defaultMessage}")
+    end
+    
+    return result
+end
+
+def makeDefaultPosMap(oldPos)
+    return {
+        '~' => cursorAsDigPos(), # cursor positon
+        '-' => oldPos.clone() # old value of this (i.e. leave it unchanged)
+    }
+end
+
+def getPosComponentArgument(args, defaultMap, symbol)
+    if defaultMap[args[0]] then # it is either ~ or -
+        value = defaultMap[args[0]][symbol]
+        args.delete_at(0)
+        return value
+    else # it is an integer
+        return getIntegerArgument(args, type: "#{symbol.to_s} coordinate", positive: true)
+    end
+end
+
+def getPositionArgument(args, oldPos, default: nil) # X Y Z, ~ ~ ~, - - -, or any mix # returns nil if no default!
+    if args[0] && args[1] && args[2] then
+        defaultMap = makeDefaultPosMap(oldPos)
+        return DigPos.new(getPosComponentArgument(args, defaultMap, :x), 
+                          getPosComponentArgument(args, defaultMap, :y),
+                          getPosComponentArgument(args, defaultMap, :z))
+    else
+        return default
+    end
+end
+
+def noMoreArguments(args)
+    if args[0] then
+        userSucks("Did not expect more arguments #{args}")
+    end
+end
+
+#def registerCommand(name, aliases, usage)
+#    return "TODO:"
+#end
+
 case command
-    when 'origin'
-        $originx = df.cursor.x
-        $originy = df.cursor.y
-        $originz = df.cursor.z
+    when 'origin', 'o', 'set'
+        # $usage = createUsage(name: 'origin', aliases: ['o', 'set']) # TODO ADD USAGES TO EACH COMMANDS, make scriptError/userSucks print them out
+        # Even better, to refator all these commands with associated data into classes / anonoymous functions so we can eventually do digshape help <command name>
+        newOrigin = getPositionArgument($script_args, $origin, default: cursorAsDigPos())
 
-        markOrigin($originx, $originy, $originz)
-    when 'resetz'
-        $originz = $majorz = df.cursor.z
-    when 'line'
-        dig = getDigMode(argument1)
+        noMoreArguments($script_args)
 
-        if df.cursor.z == $originz then
-            drawLine($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, dig)
-        else
-            puts "  Error: origin and target must be on the same z level"
-            throw :script_finished
-        end
-    when 'ellipse' #digshape ellipse [filled] [digmode]
-        filled = false
-        case argument1
-            when 'filled'; filled = true
-            when 'hollow'; filled = false
-            when 'true'; filled = true
-            when 'false'; filled = false
-            when 't'; filled = true
-            when 'f'; filled = false
-            when 'y'; filled = true
-            when 'n'; filled = false
-        end
+        setOrigin(newOrigin.x, newOrigin.y, newOrigin.z) # need to refactor setOrigin
 
-        dig = getDigMode(argument1) #check argument 1 for dig instructions
-        if argument2 then # if argument 2 is present, look at that for dig instructions
-            dig = getDigMode(argument2)
-        end
+        writeLuaPos("origin", $origin)
 
-        if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=dig, mode = 'bbox')
+    when 'major', 'm' #used to mark the end point of the major diameter
+        newMajor = getPositionArgument($script_args, $major, default: cursorAsDigPos())
+        noMoreArguments($script_args)
 
-            # remove origin designation
-            digAt($originx, $originy, $originz, 'x')
-        else
-            puts "  Error: origin and target must be on the same z level"
-            throw :script_finished
-        end
-    when 'circle2p' #digshape circle2p [filled] [digmode]
-        filled = false
-        case argument1
-            when 'filled'; filled = true
-            when 'hollow'; filled = false
-            when 'true'; filled = true
-            when 'false'; filled = false
-            when 't'; filled = true
-            when 'f'; filled = false
-            when 'y'; filled = true
-            when 'n'; filled = false
-        end
+        requireOriginZLevel()
+
+        setMajor(newMajor.x, newMajor.y, newMajor.z) # need to refactor setMajor
         
-        dig = getDigMode(argument1) #check argument 1 for dig instructions
-        if argument2 then # if argument 2 is present, look at that for dig instructions
-            dig = getDigMode(argument2)
-        end
+        writeLuaPos("major", $major)
 
-        if df.cursor.z == $originz then
-            drawEllipse($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode = dig, mode = 'diameter')
-        else
-            puts "  Error: origin and target must be on the same z level"
-            throw :script_finished
+        
+
+        stdout "Now move the cursor to the minor axis radius (extent) and call ellipse3p"
+    when 'resetz', 'setz'
+        z = df.cursor.z # default
+
+        if args[0] then
+            z = getPosComponentArgument(args, makeDefaultPosMap(origin), :z) # only really need the z-component from origin for default
         end
-    when 'major' #digshape major
-        #used to mark the end point of the major diameter
-        #$major = df.cursor
-        $majorx = df.cursor.x
-        $majory = df.cursor.y
-        $majorz = df.cursor.z
-        if df.cursor.z == $originz then
-            markOrigin($majorx, $majory, $majorz)
-            puts "  Now move the cursor to the minor axis radius (extent) and call ellipse3p"
-        else
-            puts "  Error: origin and target must be on the same z level"
-            throw :script_finished
+        noMoreArguments($script_args)
+
+        setOrigin($origin.x, $origin.y, z)
+        if $major then
+            setMajor($major.x, $major.y, z)
         end
-    when 'ellipse3p' #digshape ellipse3p [filled] [digmode]
-        if df.cursor.z == $originz then
-            if $majorx == nil then
-                puts "  Error: Set a point for the end of the major axis with the cursor and 'digshape major'"
-                throw :script_finished
-                end
-            
+    when 'ls', 'status'
+        stdout "origin: #{$origin != nil ? $origin.to_s : '<nil>'}"
+        stdout "major : #{$major != nil ? $major.to_s : '<nil>'}"
+        stdout "cursor: #{cursorAsDigPos().to_s}"
+        
+    when 'line', 'l'
+        digMode = getDigModeArgument($script_args)
+        noMoreArguments($script_args)
+
+        requireOriginZLevel()
+
+        drawLine($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, digMode)
+
+    when 'ellipse', 'e' #digshape ellipse [filled] [digmode]
+        filled = getFilledArgument($scripts_args)
+        digMode = getDigModeArgument($script_args)
+        noMoreArguments($script_args)
+
+        requireOriginZLevel()
+
+        drawEllipse($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=digMode, mode='bbox') # fixme: default arguments should be colon not equals
+
+    when 'circle2p', 'circle', 'c' #digshape circle2p [filled] [digmode]
+        filled = getFilledArgument($script_args)
+        digMode = getDigModeArgument($script_args) #check argument 1 for dig instructions
+        noMoreArguments($script_args)
+
+        requireOriginZLevel()
+
+        drawEllipse($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=digMode, mode='diameter') # fixme: default arguments should be colon not equals
+
+    when 'ellipse3p', 'e3p' #digshape ellipse3p [filled] [digmode]
+        filled = getFilledArgument($script_args)
+        digMode = getDigModeArgument($script_args)
+        noMoreArguments($script_args)
+
+        requireOriginZLevel(msg:"All control points must be on the same z level")
+        requireMajor()
+        
+        if filled then
+            stdout "Filled not yet supported for 3p ellipses."
             filled = false
-            case argument1
-                when 'filled'; filled = true
-                when 'hollow'; filled = false
-                when 'true'; filled = true
-                when 'false'; filled = false
-                when 't'; filled = true
-                when 'f'; filled = false
-                when 'y'; filled = true
-                when 'n'; filled = false
-            end
-            
-            if filled then
-                puts "  Filled not yet supported for 3p ellipses."
-                filled = false
-                end
-
-            dig = getDigMode(argument1) #check argument 1 for dig instructions
-            if argument2 then # if argument 2 is present, look at that for dig instructions
-                dig = getDigMode(argument2)
-            end
-
-            drawEllipse($originx, $originy, $originz, $majorx, $majory, $majorz, df.cursor.x, df.cursor.y, df.cursor.z, filled = filled, digMode = dig, mode = 'axis')
-        else
-            puts "  Error: all control points must be on the same z level"
-            throw :script_finished
         end
-    when 'bez' #digshape bez
+
+        drawEllipse($origin.x, $origin.y, $origin.z, $major.x, $major.y, $major.z, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode=digMode, mode='axis') # fixme: default arguments should be colon not equals
+
+    when 'bezier', 'bez', 'b' #digshape bezier [weight] digmode]
         #use origin and major as endpoints, cursor as curve shaper
-        if df.cursor.z == $originz then
-            if $majorx == nil then
-                    puts "  Error: Set an endpoint for the curve with the cursor and 'digshape major'"
-                    throw :script_finished
-                    end
-            
-            weight = argument1.to_f
-            if weight = 0 then 
-                weight = 1.5 
-            end
-            
-            dig = getDigMode(argument1) #check argument 1 for dig instructions
-            if argument2 then # if argument 2 is present, look at that for dig instructions
-                dig = getDigMode(argument2)
-            end
-            
-            plotQuadRationalBezier($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, $majorx, $majory, $majorz, weight, dig)
-        else
-            puts "  Error: all control points must be on the same z level"
-            throw :script_finished
-        end
-    when 'polygon'
-        if not argument1 then
-            puts "  Must supply a polygon n-sides parameter"
-            throw :script_finished
-        else
-            n = argument1.to_i
-            dig = getDigMode(argument2)
-            if argument3 then
-                dig = getDigMode(argument3)
-            end
-            apothem=false;
-            case argument2
-                when 'apothem'; apothem=true
-                when 'radius'; apothem=false
-                when 'a'; apothem=true
-                when 'r'; apothem=false
-                when 't'; apothem=true
-                when 'f'; apothem=false
-                when 'y'; apothem=true
-                when 'n'; apothem=false
-            end
-            if df.cursor.z == $originz then
-                drawPolygon($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, apothem, dig)
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
-            end
-        end
-    when 'star' # star N [SKIP=2] [DIGMODE]
-        if not argument1 then
-            puts "  Must supply a star n-sides parameter"
-            throw :script_finished
-        else
-            dig = getDigMode(argument2)
-            if argument3 then
-                dig = getDigMode(argument3)
-            end
-            n = argument1.to_i
-            skip = Integer(argument2) rescue 2
+        weight = getFloatArgument($script_args, default: 1.5, type: "bezier weight")
+        digMode = getDigModeArgument($script_args) #check argument 1 for dig instructions
+        noMoreArguments($script_args)
+        
+        requireOriginZLevel(msg:"All control points must be on the same z level")
+        requireMajor()
+        
+        plotQuadRationalBezier($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, $major.x, $major.y, $major.z, weight, digMode)
 
-            if df.cursor.z == $originz then
-                drawStar($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.z, n, skip, dig)
-            else
-                puts "  Error: origin and target must be on the same z level"
-                throw :script_finished
-            end
-        end
-    when 'downstair'
-        if not argument1 then
-            puts "  Must supply a depth parameter"
-            throw :script_finished
-        else
-            depth = argument1.to_i
-            if depth <= 0 then
-                puts "  Depth must be an integer greater than zero"
-                throw :script_finished
-            else
-                digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth)
-            end
-        end
-    when 'flood'
-        maxArea = argument1.to_i
-        if maxArea == 0 then maxArea = 10000 end
+    when 'polygon', 'p' #digshape polygon [sides] [apothem/radius] [digMode] # apothem is default
+        sides = getIntegerArgument($script_args, type: "polygon n-sides")
         
-        dig = getDigMode(argument1) #check argument 1 for dig instructions
-        if argument2 then # if argument 2 is present, look at that for dig instructions
-            dig = getDigMode(argument2)
-        end
-        
-        t=df.map_tile_at(df.cursor.x, df.cursor.y, df.cursor.z)
-        targetDig = t.designation.dig #we will only fill the designation type under the cursor.
-        
-        if not t.designation.dig==:No then
-            if dig2enum(dig) == t.designation.dig then
-            puts "  Error: floodfill must be centered on an undesignated/matching tile."
-            throw :script_finished
-            end
+        apothem = false # custom argument parse
+        case $script_args[0]
+            when 'apothem', 'a', 't', 'true', 'y', 'yes'; apothem=true; $script_args.delete_at(0)
+            when 'radius', 'r', 'f', 'false', 'n', 'no'; apothem=false; $script_args.delete_at(0)
         end
 
-        floodfill(df.cursor.x, df.cursor.y, df.cursor.z, targetDig, dig, maxArea)
-        throw :script_finished
+        digMode = getDigModeArgument($script_args)
+
+        noMoreArguments($script_args)
+
+        requireOriginZLevel()
+
+        drawPolygon($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, sides, apothem, digMode)
+
+    when 'star', 's' #digshape star N [skip=2] [digMode]
+        n = getIntegerArgument($script_args, type: "star n-sides")
+
+        skip = getIntegerArgument($script_args, default: 2, type: "skip")
+        digMode = getDigModeArgument($script_args)
+
+        noMoreArguments($script_args)
+
+        requireOriginZLevel()
+
+        drawStar($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, n, skip, digMode)
+	when 'spiral'
+			coils=getIntegerArgument($script_args, default: 2, type: "number of coils")
+			chord=getIntegerArgument($script_args, default: 1, type: "distance between points")
+			digMode = getDigModeArgument($script_args)
+			noMoreArguments($script_args)
+
+			drawSpiral($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, digMode)
+    when 'keupo', 'stairs', 'downstairs', 'downstair' #digshape keupo depth
+        depth = getIntegerArgument($script_args, type: "depth")
+
+        noMoreArguments($script_args)
+
+        if depth <= 0 then
+            userSucks "Depth must be an integer greater than zero"
+        end
+        
+        digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth)
+    when 'flood', 'f'
+        maxArea = getIntegerArgument($script_args, default: 10000, type: "maximum flood area")
+        digMode = getDigModeArgument($script_args)
+
+        noMoreArguments($script_args)
+        
+        tile = df.map_tile_at(df.cursor.x, df.cursor.y, df.cursor.z)
+        targetDig = tile.designation.dig #we will only fill the designation type under the cursor.
+        
+        if targetDig != :No then
+            if targetDig == digMode2enum(digMode) then
+                userSucks "Floodfill must be centered on an undesignated/matching tile."
+            end
+        end
+        floodfill(df.cursor.x, df.cursor.y, df.cursor.z, targetDig, dig, maxArea)   
     when 'undo'
         unDig()
-    when 'spiral'
-        if not argument1 then
-            puts "  Must supply a coils parameter"
-            throw :script_finished
-        else
-            coils = argument1.to_i
-            chord = 2
-            if argument2 then
-                chord = argument2.to_i
-            end
-
-            dig = getDigMode(argument3)
-
-            drawSpiral($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, dig)
-        end
     else
-        puts "  Error: Invalid command"
-        throw :script_finished
+        userSucks "Invalid command"
 end
