@@ -1,16 +1,14 @@
-# Some DFHack scripts
-
-Some dfhack scripts from friends of keupo on twitch
 # Usage
-*note*: any of the drawing commands can be appended with a digging designation [dujihrx] at the end, or will default to 'd'
 
-for example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs with the mark as the center and the cursor as a vertex on the star
+You can add a digging designation to the end of any of the drawing commands - [dujihrx].  The default is 'd'.
 
-## in-game help
-`digshape ?`
+For example, `digshape star 5 2 j` will dig a 5 pointed star out of downstairs with the mark as the center and the cursor as a vertex on the star
 
-## set mark
-	digshape origin
+## In-game help
+    digshape ?
+
+## Set the origin
+    digshape origin
 
 *The origin is used for most drawing operations. It persists between operations. It is Step 1 in any of the following operations.*
 
@@ -57,14 +55,17 @@ _eg:_ `digshape polygon 6`: draws a hexagon of dig designations, with the mark a
 	digshape polygon <n sides> apothem
 *Step 2: Draw a polygon with n sides, with the mark as center, and cursor as a midpoint of one of the sides [apothem, like a radius]*
 
-## draw a star polygon
-	digshape star <n sides> [skip=2]
-in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbol)
+## Draw a star polygon
+In [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbol)
 *mark as center and cursor as a vertex*
+    digshape star <n sides> [skip=2]
 
 ## draw a point with n-fold symmetry
 	digshape star <n sides> <n sides>
 *Step 2: draw a point at the cursor, and at n points around the origin at the same radius, as though they were verticies of a star without drawing the connecting lines. (eg for 5fold: "digshape star 5 5"). It is helpful to bind this to a keycombo, so that it can be used to draw.*
+
+## Draw an Archimedean spiral with specified number of "coils", each point separated by "chord" tiles
+    digshape spiral <coils> <chord>
 
 ## flood fill an area
         digshape flood [max coverage=10000]
@@ -78,6 +79,12 @@ in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
 ## move all markers to the current z level
         digshape resetz
 *moves the markers (origin, major) to the current z level*
+
+    digshape star <n sides> [skip=2]
+
+
+## Draw an Archimedean spiral with specified number of "coils", each point separated by "chord" tiles
+    digshape spiral <coils> <chord>
 
 # Contributors
 
@@ -102,4 +109,3 @@ in [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
 [Writeable Bitmap Shape Extensions](https://github.com/teichgraf/WriteableBitmapEx/blob/master/Source/WriteableBitmapEx/WriteableBitmapShapeExtensions.cs) used under the MIT license 
 
 [Drawing equidistant points on a spiral](https://stackoverflow.com/questions/13894715/draw-equidistant-points-on-a-spiral)
-	

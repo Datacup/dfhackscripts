@@ -42,6 +42,10 @@ Commands that require an origin to be set:
     To move all of the markers to the current z level:
         digshape resetz
 
+    To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
+        digshape spiral <coils> <chord>
+
+
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
 TODO: mark origin should not change the digging designation, ellipse cleanup should restore not clear it.
@@ -854,6 +858,52 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
     end
 end
 
+
+# based on an algorithm in this stackoverflow question
+# https://stackoverflow.com/questions/13894715/draw-equidistant-points-on-a-spiral
+def drawSpiral(x0, y0, z0, x1, y1, z1, coils, chord = 10, digMode = 'd')
+    # ('0'=no rotation, '1'=360 degrees, '180/360'=180 degrees)
+    rotation = 0
+
+    # value of theta corresponding to end of last coil
+    thetaMax = coils * 2 * Math::PI
+
+    xOffset = x1 - x0
+    yOffset = y1 - y0
+
+    radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
+    if (radius > 0.0) then
+        # How far to step away from center for each side.
+        awayStep = radius / thetaMax
+
+        digAt(x0, y0, z0, digMode)
+
+        # For every side, step around and away from center.
+        # start at the angle corresponding to a distance of chord
+        # away from centre.
+        theta = chord / awayStep
+
+        while (theta.abs <= thetaMax.abs)
+            # How far away from center
+            away = awayStep * theta
+
+            # How far around the center.
+            around = theta + rotation
+
+            # Convert 'around' and 'away' to X and Y.
+            x = x0 + (Math.cos(around) * away).round
+            y = y0 + (Math.sin(around) * away).round
+
+            digAt(x, y, z0, digMode)
+
+            # to a first approximation, the points are on a circle
+            # so the angle between them is chord/radius
+            theta += chord / away
+        end
+    end
+end
+
+
 # script execution start
 
 if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
@@ -867,6 +917,8 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
     puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
     puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
+	puts "To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
+            digshape spiral <coils> <chord>"
     puts "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
     puts "  To undo the previous command (restoring designation): digshape undo"
     puts "  To move all markers to the current z level (without displaying them): digshape resetz"
@@ -1116,6 +1168,21 @@ case command
         throw :script_finished
     when 'undo'
         unDig()
+    when 'spiral'
+        if not argument1 then
+            puts "  Must supply a coils parameter"
+            throw :script_finished
+        else
+            coils = argument1.to_i
+            chord = 2
+            if argument2 then
+                chord = argument2.to_i
+            end
+
+            dig = getDigMode(argument3)
+
+            drawSpiral($originx, $originy, $originz, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, dig)
+        end
     else
         puts "  Error: Invalid command"
         throw :script_finished
