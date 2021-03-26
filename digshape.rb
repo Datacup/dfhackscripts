@@ -43,7 +43,7 @@ Commands that require an origin to be set:
     To draw a star using the origin as the center and the cursor as the radius|apothem (radius)
             digshape star <points> [skip] [digMode]
 
-    To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
+    To draw an Archimedean spiral (coils - number of coils, chord - distance between points) centered on the origin and having a radius to the cursor:
         digshape spiral <coils> <chord>
 
     To move all of the markers to the current z level:
@@ -88,7 +88,6 @@ This file is broken into segments.
     BUG: "digshape polygon 2 apothem" does not work, but higher numbers do.
 
 
-
 ============  TODO  ============
     TODO: mark origin should not change the digging designation, ellipse cleanup should restore not clear it.
     TODO: replace text dig designations with dfhack enums
@@ -96,8 +95,6 @@ This file is broken into segments.
     TODO: just always use the current Z level. (ensure undo)
     TODO: rename control points to A,B,C,... for more generality and faster discussion. Maybe origin+ABCD...? [Origin, Cursor, A,B,C,D,...]
     TODO: add marker mode/toggle marker designation, smooth, engrave, carveFortification
-
-
 
 
 ============  FEATURE IDEAS  ============
@@ -110,6 +107,8 @@ This file is broken into segments.
     IDEA: default digmode is whatever is selected currently in the active df:designationMode screen
     IDEA: add diagonal adjacency to floodfill as an option
 =end
+
+
 
 
 
@@ -326,6 +325,7 @@ def undo()
         digAt(x,y,z, enum2digMode(d), buffer: true, bufferX: newBufferX, bufferY: newBufferY, bufferZ: newBufferZ, bufferD: newBufferD)
         i = i-1
     end
+
     #clear buffer for next dig
     $digBufferX = newBufferX
     $digBufferY = newBufferY
@@ -338,7 +338,7 @@ def isDigPermitted(digMode, tileShape)
     # can we dig on this tile?
     
     if not tileShape then return false end
-    
+
     case digMode
         when 'd', 'u', 'i', 'r'; return tileShape == :Wall
         when 'j', 'h'; return tileShape == :Wall || tileShape == :Floor
@@ -1131,6 +1131,7 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
         end
     end
 end
+
 
 
 
