@@ -49,6 +49,9 @@ Commands that require an origin to be set:
     To move all of the markers to the current z level:
         digshape resetz
 
+    To swap the origin and cursor:
+        digshape swap
+
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 =end
 
@@ -1161,6 +1164,7 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     stdout "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
     stdout "  To undo the previous command (restoring designation): digshape undo"
     stdout "  To move all markers to the current z level (without displaying them): digshape resetz"
+    stdout "  To swap the origin and cursor markers: digshape swap"
     stdout "  All commands accept a one letter digging designation [dujihrx] at the end, or will default to 'd'"
     throw :script_finished
 end
@@ -1363,6 +1367,22 @@ case command
         if $major then
             setMajor($major.x, $major.y, z)
         end
+    when 'swap'
+        stdout("origin: #{$origin != nil ? $origin.to_s : '<nil>'}")
+        stdout("major : #{$major != nil ? $major.to_s : '<nil>'}")
+        stdout("cursor: #{cursorAsDigPos().to_s}")
+        stdout("---swap---")
+
+        temp=$origin
+        $origin=cursorAsDigPos()
+        df.cursor.x=temp.x
+        df.cursor.y=temp.y
+        df.cursor.z=temp.z
+
+        stdout("origin: #{$origin != nil ? $origin.to_s : '<nil>'}")
+        stdout("major : #{$major != nil ? $major.to_s : '<nil>'}")
+        stdout("cursor: #{cursorAsDigPos().to_s}")
+
 
     when 'ls', 'status'
         stdout("origin: #{$origin != nil ? $origin.to_s : '<nil>'}")

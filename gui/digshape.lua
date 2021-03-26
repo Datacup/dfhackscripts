@@ -21,8 +21,33 @@ DigshapeUI.ATTRS {
     currentCommand = 'circle hollow @',
     currentOutput = {},
     currentError = {},
-    currentDig = {}
+    currentDig = {},
     -- default properties for self here
+
+    --Preview mode variables
+    blink = false, --should the preview blink?
+    blinkrate = { 3, 750, 350, 125 }, --how fast do we blink. blinkrate[1] is the index of the chosen rate.
+    pens={
+        --{key, symbol character code, fgcolor, bgcolor}
+        ['origin']=dfhack.pen.make({ch='+',fg=COLOR_CYAN,bg=COLOR_LIGHTGREEN}),
+        ['cursor']=dfhack.pen.make({ch='X',fg=COLOR_CYAN,bg=COLOR_LIGHTGREEN}),
+        ['major']=dfhack.pen.make({ch='a',fg=COLOR_CYAN,bg=COLOR_LIGHTGREEN}),
+        ['designation']=dfhack.pen.make({fg=COLOR_BROWN,bg=COLOR_YELLOW}),
+        ['mark']=dfhack.pen.make({fg=COLOR_YELLOW,bg=COLOR_LIGHTCYAN}),
+        ['clear']=dfhack.pen.make({fg=COLOR_BROWN,bg=COLOR_RED})
+    },
+
+    --Designation mode variables
+    designateMarking = false, --are we designating "marking" rather than standard?
+
+
+    --Mouse variables
+    mouse = true,
+    mousebuttons={'commit','origin','major'},
+    dragging = false,
+    lastMouse = xyz2pos(0, 0, 0),
+    lerp = true, --lerp is laggy because it repeatedly inefficiently accesses memory; it would be faster if we cached some but thats above my paygrade ;)
+    customOffset = { x = 0, y = 0 },
 }
 
 
@@ -34,29 +59,44 @@ local digButtons={
     {key='j', symbol=">", text="Down Stair"},
     {key='u', symbol="<", text="Up Stair"},
     {key='x', symbol=" ", text="Remove Designation"},
+    {key='M', symbol=" ", text="Toggle Dig/Mark"}
 }
 
 local digModeToButton = {}
 for _, data in pairs(digButtons) do
-    data.keybind = ("CUSTOM_%s"):format(data.key:upper())
+    data.keybind = ("CUSTOM_".. (string.match(data.key,"%u") ~=nil and "SHIFT_" or "") .."%s"):format(data.key:upper())
     digModeToButton[data.key] = data
+    print("~")
 end
 
 local buttons = {
-    {key="p", text="Set digshape command", callback=function(self)
+    --key: the key that will be bound to callback. For non-button entries (eg blank lines), set key="NOTKEY" to skip the keybinding.
+    --text: the label for the keybind
+    --prelabel: a menu rendering function exicuted before displaying the keybinding, use to newline or set color, etc
+    --postlabel: as prelabel, but after the keybinding label is printed.
+    --callback: the function called by this button
+    {key="p", text="Set digshape command", postlabel=function(self, dc)
+        dc:newline(1):advance(3):pen(COLOR_YELLOW):string("[ "..self.currentCommand.." ]")
+    end, callback=function(self)
         dialog.showInputPrompt("Set digshape command", "Enter a digshape command", COLOR_WHITE, self.currentCommand, function(result)
             self.currentCommand=result
             self:runCurrentCommand(true)
         end)
     end},
-    {key="o", text="Set origin", callback=function(self)
+    {key="o", text="Set origin",prelabel=function(self,dc)dc:newline(1) if self.origin ~=nil then dc:pen(COLOR_LIGHTGREEN) else dc:pen(COLOR_LIGHTRED)  end end, callback=function(self)
         dfhack.run_command_silent("digshape lua origin")
         self:runCurrentCommand(true)
     end},
-    {key="m", text="Set major", callback=function(self)
+    {key="s", text="Swap origin/cursor", prelabel=function(self,dc)dc:newline(1):advance(2) if self.origin ~=nil then dc:pen(COLOR_LIGHTGREEN) else dc:pen(COLOR_LIGHTRED)  end end, callback=function(self)
+        dfhack.run_command_silent("digshape lua swap")
+        self:runCurrentCommand(true)
+    end},
+
+    {key="a", text="Set major", callback=function(self)
         dfhack.run_command_silent("digshape lua major")
         self:runCurrentCommand(true)
     end},
+    {key="NOTKEY",prelabel=function(self,dc)dc:newline(2) end},
     {key="SELECT", keybind="SELECT", text="Execute command", callback=function(self)
         self:runCurrentCommand(false)
     end},
@@ -74,14 +114,14 @@ local lastZ = df.global.cursor.z
 
 function DigshapeUI:runCurrentCommand(preview)
     local command = ("digshape lua %s%s"):format(preview and "preview " or "", self.currentCommand):gsub("@", self.activeDesgination)
-    --print(("command='%s'"):format(command))
+    print(("command='%s'"):format(command))
     local output = dfhack.run_command_silent(command)
     self.currentOutput = {}
     self.currentError = {}
     self.currentDig = {}
     self.origin = nil
     self.major = nil
-    --print("output=", output)
+    print("output=", output)
     for line in output:gmatch("[^\r\n]+") do
         messageType = line:match("^([^:]+):")
         if messageType == "msg" then
@@ -140,14 +180,14 @@ function DigshapeUI:renderOverlay()
     end
 
     for _, dig in ipairs(self.currentDig) do
-        paintMapTile(dc, vp, df.global.cursor, xyz2pos(dig.x, dig.y, dig.z), dig.symbol, COLOR_BLACK, self.activeDesgination=='x' and COLOR_RED or COLOR_BROWN)
+        paintMapTile(dc, vp, df.global.cursor, xyz2pos(dig.x, dig.y, dig.z), dig.symbol, self.activeDesgination=='x' and self.pens['clear'] or self.pens['designation'])
     end
 
     if self.origin then
-        paintMapTile(dc, vp, df.global.cursor, self.origin, '+', COLOR_YELLOW)
+        paintMapTile(dc, vp, df.global.cursor, self.origin, '+', self.pens['origin'])
     end
     if self.major then
-        paintMapTile(dc, vp, df.global.cursor, self.major, '+', COLOR_LIGHTGREEN)
+        paintMapTile(dc, vp, df.global.cursor, self.major, '+', self.pens['major'])
     end
     
         
@@ -156,21 +196,38 @@ end
 function DigshapeUI:onRenderBody(dc)
     self:renderOverlay()
 
-    dc:clear():seek(1,1):pen(COLOR_WHITE):string("Digshape - Main menu")
+    dc:clear():seek(1, 1):pen(COLOR_WHITE):string("Digshape - " .. self.state--:gsub("^%a", function(x)
+     --   return x:upper()
+   -- end)
+    )
     dc:seek(1,3)
+
     if true or self.state=="preview" then
         for _, data in pairs(digButtons) do
-            builder = dc:key_string(data.keybind, data.text, self.activeDesgination==data.key and COLOR_WHITE or COLOR_GREY):newline(1)
-            if data.key=='x' then
-                builder:newline(1)
-            end
+            builder = dc:newline(1):key_string(data.keybind, data.text, self.activeDesgination==data.key and COLOR_WHITE or COLOR_GREY)
+           -- if data.key=='x' then
+           --     builder:newline(1)
+           -- end
         end
+
+        dc:newline(2)
+
         for _, data in pairs(buttons) do
-            builder = dc:key_string(data.keybind, data.text, COLOR_GREY):newline(1)
-            if data.key=='m' then
-                builder:newline(1)
+            if data.prelabel ~= nil then
+                data.prelabel(self,dc)
+            else
+                dc:newline(1):pen(COLOR_GREY)
             end
-        end
+            if data.key~="NOTKEY" then
+                builder = dc:key_string(data.keybind, data.text)
+            end
+            if data.postlabel ~= nil then
+                data.postlabel(self,dc)
+            end
+            --if data.key=='m' then
+            --builder:newline(1)
+            --end
+            end
 
         
         --[[ dc:key_string("CUSTOM_S", "Set Brush",COLOR_GREY)
