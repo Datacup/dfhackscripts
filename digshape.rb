@@ -45,8 +45,6 @@ Commands that require an origin to be set:
     To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
         digshape spiral <coils> <chord>
 
-    To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
-        digshape spiral <coils> <chord>
 
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
@@ -919,6 +917,8 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     puts "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
     puts "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
     puts "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
+	puts "To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
+            digshape spiral <coils> <chord>"
     puts "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
     puts "  To undo the previous command (restoring designation): digshape undo"
     puts "  To move all markers to the current z level (without displaying them): digshape resetz"
