@@ -80,6 +80,11 @@ In [Schläfli symbol notation](https://en.wikipedia.org/wiki/Schl%C3%A4fli_symbo
         digshape resetz
 *moves the markers (origin, major) to the current z level*
 
+    digshape star <n sides> [skip=2]
+
+
+## Draw an Archimedean spiral with specified number of "coils", each point separated by "chord" tiles
+    digshape spiral <coils> <chord>
 
 # Contributors
 

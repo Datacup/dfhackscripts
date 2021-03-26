@@ -45,6 +45,9 @@ Commands that require an origin to be set:
     To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
         digshape spiral <coils> <chord>
 
+    To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
+        digshape spiral <coils> <chord>
+
     All commands accept a digging designation mode as a single character argument [dujihrx], otherwise will default to 'd'
 
 TODO: mark origin should not change the digging designation, ellipse cleanup should restore not clear it.
@@ -856,6 +859,7 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
         end
     end
 end
+
 
 # based on an algorithm in this stackoverflow question
 # https://stackoverflow.com/questions/13894715/draw-equidistant-points-on-a-spiral
