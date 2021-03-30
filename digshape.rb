@@ -1,4 +1,5 @@
-# dig shapes
+# designate geometric shapes
+
 =begin
 
 digshape
@@ -8,7 +9,7 @@ digshape allows the creation of a number of repetative geometric designations. T
 Commands that do not require a set origin:
 
     To dig a 3x3 sparse up-down stairway:
-        digshape downstair <depth>
+        digshape downstair <depth> (differentStart? [default: true])
     
     To undo the previous command (restoring designation): digshape undo
 
@@ -131,12 +132,23 @@ $isLuaMode = $script_args[0] == "lua"
 $isPreviewOnly = false
 
 if $isLuaMode then
+#      puts "-->>   Scriptargs:"
+#      puts $script_args
+#      puts "<<--"
+
     $script_args.delete_at(0)
     $isPreviewOnly = $script_args[0] == "preview"
     if $isPreviewOnly then
         $script_args.delete_at(0)
+        if $script_args[0] == "argreference" then
+                puts "ref:ARGREFTABLE"
+                $script_args.delete_at(0)
+                #throw :script_finished
+        end
     end
+
     $output
+
 end
 
 def writeLuaPos(name, digPos) # pos:<name>:<X>:<Y>:<Z>
@@ -928,9 +940,15 @@ def drawEllipse(x0, y0, z0, x1, y1, z1, x2=nil, y2=nil, z2=nil, filled = false, 
     end
 end
 
-def digKeupoStair(x, y, z, depth)
+def digKeupoStair(x, y, z, depth,differentStart=true)
     #Dig an X of updown stairs (corners and center of a 3x3) centered on cursor, down a number of zlevels.
     iz = z
+    startingDesignation=''
+    if (differentStart) then
+        startingDesignation='j'
+    else
+        startingDesignation='i'
+    end
     digAt(x, y, iz, 'j')
     digAt(x - 1, y + 1, iz, 'j')
     digAt(x - 1, y - 1, iz, 'j')
@@ -1003,18 +1021,24 @@ def drawStar(x0, y0, z0, x1, y1, z1, n = 5, skip = 2, digMode = 'd')
     end
 end
 
-def drawSpiral(x0, y0, z0, x1, y1, z1, coils, chord = 10, digMode = 'd')
+def drawSpiral(x0, y0, z0, x1, y1, z1, coils, chord = 10,rotation=0, digMode = 'd')
     # Draw a spiral centered at the origin, to a radius of the cursor. It makes <coils> turns, and if <chord> is >1, is made of points rather than a line.remaining
     # Source: https://stackoverflow.com/questions/13894715/draw-equidistant-points-on-a-spiral
 
-    # ('0'=no rotation, '1'=360 degrees, '180/360'=180 degrees)
-    rotation = 0
+
+
+
 
     # value of theta corresponding to end of last coil
     thetaMax = coils * 2 * Math::PI
 
     xOffset = x1 - x0
     yOffset = y1 - y0
+
+    # ('0'=no rotation, '1'=360 degrees, '180/360'=180 degrees, <0=track cursor)
+    rotation=Math.atan2(yOffset,xOffset)+rotation*0.01745 #convert to radians
+
+
 
     radius = Math.sqrt(xOffset ** 2 + yOffset ** 2)
     if (radius > 0.0) then
@@ -1157,9 +1181,8 @@ if not $script_args[0] or $script_args[0]=="help" or $script_args[0]=="?" then
     stdout "  To draw a polygon after origin is set (as center) with the cursor as a vertex: digshape polygon <# sides>"
     stdout "  To draw a polygon after origin is set (as center) with the cursor as a midpoint of a segment(apothem): digshape polygon <# sides> apothem"
     stdout "  To draw a star after origin is set (as center) with the cursor as a vertex : digshape star <# points> <skip=2>"
-	stdout "To draw an Archimedean spiral (coils - number of coils, chord - distance between points):
-            digshape spiral <coils> <chord>"
-    stdout "  To draw downstair: digshape downstair depth"
+	stdout "To draw an Archimedean spiral (coils - number of coils, chord - distance between points): digshape spiral <coils> <chord>"
+    stdout "  To draw downstair: digshape downstair depth [differentStart?=true]"
     stdout "  "
     stdout "   To flood fill with a designation, overwriting ONLY the designation under the cursor (warning: slow on areas bigger than 10k tiles..): digshape flood [maxArea=10000]"
     stdout "  To undo the previous command (restoring designation): digshape undo"
@@ -1185,7 +1208,7 @@ def requireOriginZLevel(msg: "Origin and target must be on the same z-level (use
     if df.cursor.z != $origin.z then
         userSucks(msg)
     end
-    writeLuaPos("origin",$origin) # visualize them for the user
+    #writeLuaPos("origin",$origin) # visualize them for the user
 end
 
 def requireMajor(msg: "Set a point for the end of the major axis with the cursor and 'digshape major'")
@@ -1194,30 +1217,33 @@ def requireMajor(msg: "Set a point for the end of the major axis with the cursor
         userSucks(msg)
     end
     requireOriginZLevel()
-    writeLuaPos("origin", $origin)  # visualize them for the user
-    writeLuaPos("major", $major)    # visualize them for the user
+    #writeLuaPos("origin", $origin)  # visualize them for the user
+    #writeLuaPos("major", $major)    # visualize them for the user
 end
 
 def getDigModeArgument(args)
     #get next[LAST] script argument IFF it is a digmode designation, or set default if not present.
     argument = args[0] 
     digMode = getDigMode(argument)
-    #if not ['d', 'u', 'j', 'i', 'h', 'r', 'x'].include? digMode then
-    #   digMode='d'
-    #end
-    args.delete_at(0)
-
+    if not ['d', 'u', 'j', 'i', 'h', 'r', 'x'].include? digMode then
+       digMode='d'
+    else
+        args.delete_at(0)
+    end
     return digMode
 end
+
 
 def getFilledArgument(args, default: false)
     #get next script argument IFF it is fill.
     # this doesn't *expect* and argument and so only consumes an argument when something matches
     argument = args[0]
+
     case argument
         when 'filled', 'f', 'true', 'yes', 'y'; filled = true
         when 'hollow', 'h', 'false', 'no', 'n'; filled = false
         else
+            puts( "DEFAULT?>@#$#@")
             return default # doesn't consume if nothing matches
     end
     args.delete_at(0);
@@ -1284,6 +1310,34 @@ def getIntegerArgument(args, default: nil, type: "(unnamed integer)", positive: 
     return result
 end
 
+def getBooleanArgument(args, default: nil, type: "(unnamed integer)")
+    #get next script argument, which must be an integer.
+    num = args[0]
+    result = nil
+    defaultMessage = ""
+
+    if default != nil then
+        defaultMessage = "Use `-' for the default value (#{default})"
+    end
+
+    if not num then
+        userSucks("Must supply #{type} parameter (boolean).#{defaultMessage}")
+    end
+    args.delete_at(0)
+
+    case num
+        when 'default','-';
+            userSucks("No default value for #{type} parameter!") if default == nil
+            result = default
+        else
+            result = num==true rescue userSucks("Malformed boolean for "+type+" parameter, got `"+num+"'.#{defaultMessage}")
+    end
+
+
+
+    return result
+end
+
 def makeDefaultPosMap(oldPos)
     return {
         '~' => cursorAsDigPos(), # cursor positon
@@ -1341,9 +1395,9 @@ case command
 
         setOrigin(newOrigin.x, newOrigin.y, newOrigin.z) # need to refactor setOrigin
 
-        writeLuaPos("origin", $origin)
+        #writeLuaPos("origin", $origin)
 
-    when 'major', 'm' #used to mark the end point of the major diameter
+    when 'major', 'm', 'a' #used to mark the end point of the major diameter
         newMajor = getPositionArgument($script_args, $major, default: cursorAsDigPos())
         noMoreArguments($script_args)
 
@@ -1351,17 +1405,17 @@ case command
 
         setMajor(newMajor.x, newMajor.y, newMajor.z) # need to refactor setMajor
         
-        writeLuaPos("major", $major)
+        #writeLuaPos("major", $major)
 
         stdout("Now move the cursor to the minor axis radius (extent) and call ellipse3p")
 
     when 'resetz', 'setz'
         z = df.cursor.z # default
 
-        if args[0] then
-            z = getPosComponentArgument(args, makeDefaultPosMap(origin), :z) # only really need the z-component from origin for default
-        end
-        noMoreArguments($script_args)
+#         if args[0] then
+#             z = getPosComponentArgument(args, makeDefaultPosMap(origin), :z) # only really need the z-component from origin for default
+#         end
+#         noMoreArguments($script_args)
 
         setOrigin($origin.x, $origin.y, z)
         if $major then
@@ -1385,9 +1439,18 @@ case command
 
 
     when 'ls', 'status'
-        stdout("origin: #{$origin != nil ? $origin.to_s : '<nil>'}")
-        stdout("major : #{$major != nil ? $major.to_s : '<nil>'}")
-        stdout("cursor: #{cursorAsDigPos().to_s}")
+        if $isLuaMode then
+            writeLuaPos("origin", $origin)
+            writeLuaPos("major", $major)
+           if $digBufferX.length >0 then
+                puts "Undo Buffer exists"
+           end
+           throw :script_finished
+        else
+           stdout("origin: #{$origin != nil ? $origin.to_s : '<nil>'}")
+           stdout("major : #{$major != nil ? $major.to_s : '<nil>'}")
+           stdout("cursor: #{cursorAsDigPos().to_s}")
+        end
         
     when 'line', 'l'
         digMode = getDigModeArgument($script_args)
@@ -1398,17 +1461,17 @@ case command
         drawLine($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, digMode)
 
     when 'ellipse', 'e' #digshape ellipse [filled] [digmode]
-        filled = getFilledArgument($scripts_args)
+
+        filled = getFilledArgument($script_args)
         digMode = getDigModeArgument($script_args)
         noMoreArguments($script_args)
-
         requireOriginZLevel()
 
         drawEllipse($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=digMode, mode='bbox') # fixme: default arguments should be colon not equals
 
     when 'circle2p', 'circle', 'c' #digshape circle2p [filled] [digmode]
         filled = getFilledArgument($script_args)
-        digMode = getDigModeArgument($script_args) #check argument 1 for dig instructions
+        digMode = getDigModeArgument($script_args)
         noMoreArguments($script_args)
 
         requireOriginZLevel()
@@ -1430,7 +1493,7 @@ case command
 
         drawEllipse($origin.x, $origin.y, $origin.z, $major.x, $major.y, $major.z, df.cursor.x, df.cursor.y, df.cursor.z, filled=filled, digMode=digMode, mode='axis') # fixme: default arguments should be colon not equals
 
-    when 'bezier', 'bez', 'b' #digshape bezier [weight] digmode]
+    when 'bezier', 'bez', 'b', 'curve' #digshape bezier [weight] digmode]
         #use origin and major as endpoints, cursor as curve shaper
         weight = getFloatArgument($script_args, default: 1.5, type: "bezier weight")
         digMode = getDigModeArgument($script_args) #check argument 1 for dig instructions
@@ -1459,10 +1522,8 @@ case command
 
     when 'star', 's' #digshape star N [skip=2] [digMode]
         n = getIntegerArgument($script_args, type: "star n-sides")
-
         skip = getIntegerArgument($script_args, default: 2, type: "skip")
         digMode = getDigModeArgument($script_args)
-
         noMoreArguments($script_args)
 
         requireOriginZLevel()
@@ -1472,14 +1533,17 @@ case command
 	when 'spiral'
         coils=getIntegerArgument($script_args, default: 2, type: "number of coils")
         chord=getIntegerArgument($script_args, default: 1, type: "distance between points")
+        rotate = getIntegerArgument($script_args, default: 0, type: "rotate", positive: false)
         digMode = getDigModeArgument($script_args)
         noMoreArguments($script_args)
 
-        drawSpiral($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, digMode)
+        requireOriginZLevel()
+
+        drawSpiral($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, rotate, digMode)
 
     when 'keupo', 'stairs', 'downstairs', 'downstair' #digshape keupo depth
         depth = getIntegerArgument($script_args, type: "depth")
-
+        start = getBooleanArgument($script_args, type: "different Start?", default: true)
         noMoreArguments($script_args)
 
         if depth <= 0 then
@@ -1511,3 +1575,8 @@ case command
     else
         userSucks("Invalid command")
 end
+
+#Report back to lua our status.
+writeLuaPos("origin", $origin)
+writeLuaPos("major", $major)
+writeLuaPos("cursor", cursorAsDigPos()) #lua doesn't need this, but it is handy for dev for it to be printed at the same time.
