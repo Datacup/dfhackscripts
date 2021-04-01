@@ -1106,7 +1106,11 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
     checkedTiles=Hash.new #these keep us from rechecking tiles and such.
     designatedTiles=Hash.new
 
+    loopcounter=1
+
     loop do
+#        puts "Loop#: "+ loopcounter.to_s
+        loopcounter=loopcounter+1
         if xStack.length <=0 then
            # puts "Stack empty."
             break
@@ -1115,7 +1119,7 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
         x= xw = xe = xStack.pop()
         y = yStack.pop() #always push/pop x&y together.
 
-        #puts "Checking: "+x.to_s+","+y.to_s
+#        puts "Checking: "+x.to_s+","+y.to_s
         if checkedTiles[x.to_s+","+y.to_s] !=nil then
             #puts x.to_s+","+y.to_s+"  already checked"
             next
@@ -1125,59 +1129,86 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
         end
         
         #search W for bounds
-        loop do
-            xi = xw - 1 #move xw cursor west until it hits a match
-            t=df.map_tile_at(xi,y,z)
-            
-            if !t || xi == 0  || t.designation.dig != targetDig || !isDigPermitted(digMode,t.shape_basic) then 
-                break
+        if checkedTiles[(x-1).to_s+","+y.to_s] == nil then
+            #don't scan west if we've already tried that from the tile to the left.
+
+            loop do
+                xi = xw - 1 #move xw cursor west until it hits a match
+                t=df.map_tile_at(xi,y,z)
+
+                if !t || xi == 0  || t.designation.dig != targetDig || !isDigPermitted(digMode,t.shape_basic) then
+                    break
+                end
+                xw = xi
             end
-            xw = xi
-        end
-        
-        #search E for bounds
-        loop do
-            xi = xe + 1 #move xe cursor east until it hits a match
-            t=df.map_tile_at(xi,y,z)
-            
-            if !t || xi == 0  || t.designation.dig != targetDig || !isDigPermitted(digMode,t.shape_basic) then 
-                break
+
+            #search E for bounds
+            if checkedTiles[(x+1).to_s+","+y.to_s] == nil then
+                        #don't scan east if we've already tried that from the tile to the left.
+                loop do
+                    xi = xe + 1 #move xe cursor east until it hits a match
+                    t=df.map_tile_at(xi,y,z)
+
+                    if !t || xi == 0  || t.designation.dig != targetDig || !isDigPermitted(digMode,t.shape_basic) then
+                        break
+                    end
+                    xe = xi
+                end
+
+            else
+               # puts "don't scan west: "+(x-1).to_s+","+y.to_s+" already checked."
             end
-            xe = xi
+        else
+            #puts "don't scan west: "+(x-1).to_s+","+y.to_s+" already checked."
         end
         
        #scan W..E filling, and checking N/S
         for xi in xw..xe do
-            #puts "scan: "+xi.to_s+","+y.to_s+" = "+designatedTiles[xi.to_s+","+y.to_s].to_s
+#            puts "scan: "+xi.to_s+","+y.to_s+" = "+designatedTiles[xi.to_s+","+y.to_s].to_s
             if designatedTiles[xi.to_s+","+y.to_s] == nil then
+                counter = counter -1 #only decrease counter based on tiles dug, not tiles checked.
                 digAt(xi, y, z, digMode)
                 designatedTiles[xi.to_s+","+y.to_s]=true
-                #puts "Dig: "+xi.to_s+","+y.to_s
+#                puts "Dig: "+xi.to_s+","+y.to_s
             else
-                #puts "Nodig: "+xi.to_s+","+y.to_s+" ="+designatedTiles[xi.to_s+","+y.to_s].to_s+"/"
+#                puts "Nodig: "+xi.to_s+","+y.to_s+" ="+designatedTiles[xi.to_s+","+y.to_s].to_s+"/"
             end
             
-            counter = counter -1
-            if counter <=0 then 
+
+            if counter <=0 then
+                puts "Loop#: "+ loopcounter.to_s
                 stdout("  Max coverage of #{maxCounter} tiles reached. Use multiple floods, or add a number for max coverage as 'digshape flood [max coverage] [dig type]'.")
-                stdout("  Automatically cancelling flood")
-                undo()
+                #stdout("  Automatically cancelling flood")
+                #undo()
                 return 
+            end
+            if loopcounter >=100000 then
+                puts "Loop#: "+ loopcounter.to_s
+                stdout("  Runaway flood algorithm, abort!")
+                undo()
+                stderr("  Automatically cancelling flood.")
+                return
             end
 
 
 
             #check N/S
-            t = df.map_tile_at(xi,y+1,z)
-            if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then
-                #puts "push"+xi.to_s+" "+(y+1).to_s+" as row down"
-                xStack.push(xi)
-                yStack.push(y+1)
-                end
-            t = df.map_tile_at(xi,y-1,z)
-            if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then
-                xStack.push(xi)
-                yStack.push(y-1)
+            if checkedTiles[(x).to_s+","+(y+1).to_s] == nil then
+                #don't recheck South
+                t = df.map_tile_at(xi,y+1,z)
+                if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then
+                    #puts "push"+xi.to_s+" "+(y+1).to_s+" as row down"
+                    xStack.push(xi)
+                    yStack.push(y+1)
+                    end
+            end
+            if checkedTiles[(x).to_s+","+(y-1).to_s] == nil then
+                #don't recheck north
+                t = df.map_tile_at(xi,y-1,z)
+                if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then
+                    xStack.push(xi)
+                    yStack.push(y-1)
+                    end
                 end
             end
         
@@ -1185,6 +1216,7 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
             break
         end
     end
+    #puts "Loop#: "+ loopcounter.to_s
 end
 
 
@@ -1582,6 +1614,7 @@ case command
         digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth)
 
     when 'flood', 'f'
+        stdout("cursor: #{cursorAsDigPos().to_s}")
         maxArea = getIntegerArgument($script_args, default: 10000, type: "maximum flood area")
         digMode = getDigModeArgument($script_args)
 

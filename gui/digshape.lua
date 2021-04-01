@@ -133,7 +133,7 @@ if verbose then
             local _, _, temp = string.find(msgtype, "^(...)$")
             if temp == "ERR" or temp == "MSG" or temp == "WRN" or temp == "OUT" or temp == "CMD" or temp == "RBY" or temp == ">>>" or temp == "CAL" then
                 --output channels: MSG/WRN/ERR: information, OUT: results, RBY: digshape output passed through.
-                if temp == "IGNORE" or temp == "ALSOIGNORE" or temp == "RBY5" then
+                if temp == "IGNORE" or temp == "ALSOIGNORE" or temp == "5RBY" then
                     return --don't print
                 end
                 local color = { RBY = COLOR_DARKGREY, MSG = COLOR_WHITE, WRN = COLOR_YELLOW, ERR = COLOR_LIGHTRED, CMD = COLOR_LIGHTCYAN, OUT = COLOR_MAGENTA, [">>>"] = COLOR_LIGHTMAGENTA, CAL = COLOR_BROWN }
@@ -302,9 +302,9 @@ DigshapeUI.ATTRS {
 
         star = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = false, args = { { name = "points", required = true, default = 5, type = "int", desc = "Number of points of the star" }, { name = "skip", required = true, default = 2, type = "int", desc = "How many to skip when connecting...?" }, }, runSilent = false, digMode = "@", desc = "Draw a star", aliases = { "s", "st" } },
 
-        spiral = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = false, args = { { name = "coils", required = true, default = 2, type = "int", desc = "Number of turns the spiral makes." }, { name = "skip", required = true, default = 1, type = "int", desc = "Draw every # points along spiral." }, { name = "rotate", required = true, default = { default = 0, mod = 360, inc = 15, type = "int" }, type = "int", desc = "Rotate the spiral, 0-360." }, }, runSilent = false, digMode = "@", desc = "Draw a spiral", aliases = { "sp", "coil" } },
+        spiral = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = false, args = { { name = "coils", required = true, default =  { default = 2, min = 1, max = 1000, inc = 1, type = "int" }, type = "int", desc = "Number of turns the spiral makes." }, { name = "skip", required = true, default = { default = 1, min = 1, max = 1000, inc = 1, type = "int" }, type = "int", desc = "Draw every # points along spiral." }, { name = "rotate", required = true, default = { default = 0, mod = 360, inc = 15, type = "int" }, type = "int", desc = "Rotate the spiral, 0-360." }, }, runSilent = false, digMode = "@", desc = "Draw a spiral", aliases = { "sp", "coil" } },
 
-        flood = { requireOrigin = false, requireMajor = false, requireZ = false, allowFilled = false, args = { { name = "max", required = false, default = 10000,inc=5000, type = "int", desc = "Maximum number of tiles filled before aborting. Larger numbers just take longer to complete." }, { name = "diagonals", required = false, default = false, type = "bool", desc = "Should the flood escape through corners?",guiOnlyArg=true }, }, runSilent = false, digMode = "@", desc = "Floodfill current designation at cursor.",aliases={"f"} },
+        flood = { requireOrigin = false, requireMajor = false, requireZ = false, allowFilled = false, args = { { name = "max", required = false, default =  { default = 2000, min = 1,max=10000, inc = 1000, type = "int" }, type = "int", desc = "Maximum number of tiles filled before aborting. Larger numbers just take longer to complete." }, { name = "diagonals", required = false, default = false, type = "bool", desc = "Should the flood escape through corners?",guiOnlyArg=true }, }, runSilent = false, digMode = "@", desc = "Floodfill current designation at cursor.",aliases={"f"} },
 
         resetz = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = nil, runSilent = false, digMode = "@", desc = "Move all control points to current z level",aliases={"z"} },
         radial = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = { { name = "ways", required = true, default = 3, type = "int", desc = "Number of radially symetrical points to draw." }, }, runSilent = false, digMode = "@", "Draw points with radial symmetry around origin" }, --todo: code this
@@ -485,6 +485,10 @@ function DigshapeUI:init()
                 --{ key = "HELP", text = "Help for cur. cmd.", key_sep = ": ",
                 --  on_activate = self:callback('buttonCallback_showHelpPopup'),
                 --}, NEWLINE,
+
+                { text = "CTRL+move: Move origin & cursor", key_sep = "",
+                  on_activate = self:callback('buttonCallback_dualmove'),
+                }, NEWLINE,
 
                 { key = "STRING_A092", text = "Move view to see origin", key_sep = ": ",
                   on_activate = self:callback('buttonCallback_recenterView'),
@@ -686,7 +690,8 @@ end
 
 --self:updateMenuArg("","",{})
 function DigshapeUI:updateMenuArg(menu, textID, newvalues)
-    stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
+    if type(verbose)=="int" and verbose >1 then stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
+    end
     local temp = self.subviews[menu].text_ids[textID]
 
     if type(newvalues) == "table" then
@@ -1002,7 +1007,7 @@ function DigshapeUI:runDigshapeCommand(command)
             table.insert(self.currentOutput, messageContents)
             stdout("RBY", "ref:", messageContents)
         else
-            stdout("WRN", "Digshape Unhandled Output:", line)
+            --stdout("WRN", "Digshape Unhandled Output:", line)
         end
     end
 
@@ -1266,10 +1271,29 @@ function DigshapeUI:buttonCallback_showHelpPopup()
     stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
 
 end
---
+
+function DigshapeUI:buttonCallback_dualmove()
+--move origin and cursor by same amount as current move key.
+    --todo: code this.
+end
+
+
 --function DigshapeUI:buttonCallback_()
 --
 --end
+
+--function DigshapeUI:buttonCallback_()
+--
+--end
+
+--function DigshapeUI:buttonCallback_()
+--
+--end
+
+--function DigshapeUI:buttonCallback_()
+--
+--end
+
 --function DigshapeUI:buttonCallback_()
 --
 --end
@@ -1345,6 +1369,7 @@ function DigshapeUI:onInput(keys)
     --TODO: deal with multi-key presses, because keys is an array of individuals.
 
     if df.global.cursor.x == -30000 then
+        stdout("ERR","Cursor offscreen, resetting.")
         local vp = self:getViewport()
         df.global.cursor = xyz2pos(math.floor((vp.x1 + math.abs((vp.x2 - vp.x1)) / 2) + .5), math.floor((vp.y1 + math.abs((vp.y2 - vp.y1) / 2)) + .5), vp.z)
         return
