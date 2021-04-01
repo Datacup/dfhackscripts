@@ -366,6 +366,7 @@ end
 def digAt(x, y, z, digMode = 'd', buffer: true, bufferX: $digBufferX, bufferY: $digBufferY, bufferZ: $digBufferZ, bufferD: $digBufferD)
     #Commit designation@coords to the map, opt save current value there to the buffer for undo.
 
+    #puts "DIGAT: "+x.to_s+","+y.to_s
     tile = df.map_tile_at(x, y, z)
 
     # check if the tile returned is valid, ignore if its not (out of bounds, air, etc)
@@ -1101,10 +1102,27 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
     #scan for next tile to dig.
     xStack = [x]
     yStack = [y]
-    
+
+    checkedTiles=Hash.new #these keep us from rechecking tiles and such.
+    designatedTiles=Hash.new
+
     loop do
+        if xStack.length <=0 then
+           # puts "Stack empty."
+            break
+        end
+
         x= xw = xe = xStack.pop()
         y = yStack.pop() #always push/pop x&y together.
+
+        #puts "Checking: "+x.to_s+","+y.to_s
+        if checkedTiles[x.to_s+","+y.to_s] !=nil then
+            #puts x.to_s+","+y.to_s+"  already checked"
+            next
+        else
+            #puts x.to_s+","+y.to_s+"  added to checked list"
+            checkedTiles[x.to_s+","+y.to_s]=true
+        end
         
         #search W for bounds
         loop do
@@ -1130,7 +1148,14 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
         
        #scan W..E filling, and checking N/S
         for xi in xw..xe do
-            digAt(xi, y, z, digMode)
+            #puts "scan: "+xi.to_s+","+y.to_s+" = "+designatedTiles[xi.to_s+","+y.to_s].to_s
+            if designatedTiles[xi.to_s+","+y.to_s] == nil then
+                digAt(xi, y, z, digMode)
+                designatedTiles[xi.to_s+","+y.to_s]=true
+                #puts "Dig: "+xi.to_s+","+y.to_s
+            else
+                #puts "Nodig: "+xi.to_s+","+y.to_s+" ="+designatedTiles[xi.to_s+","+y.to_s].to_s+"/"
+            end
             
             counter = counter -1
             if counter <=0 then 
@@ -1139,15 +1164,18 @@ def floodfill(x,y,z,targetDig, digMode, maxCounter= 10000)
                 undo()
                 return 
             end
-            
+
+
+
             #check N/S
             t = df.map_tile_at(xi,y+1,z)
             if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then
+                #puts "push"+xi.to_s+" "+(y+1).to_s+" as row down"
                 xStack.push(xi)
                 yStack.push(y+1)
                 end
             t = df.map_tile_at(xi,y-1,z)
-            if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then 
+            if t && t.designation.dig == targetDig && isDigPermitted(digMode,t.shape_basic) then
                 xStack.push(xi)
                 yStack.push(y-1)
                 end

@@ -133,7 +133,7 @@ if verbose then
             local _, _, temp = string.find(msgtype, "^(...)$")
             if temp == "ERR" or temp == "MSG" or temp == "WRN" or temp == "OUT" or temp == "CMD" or temp == "RBY" or temp == ">>>" or temp == "CAL" then
                 --output channels: MSG/WRN/ERR: information, OUT: results, RBY: digshape output passed through.
-                if temp == "IGNORE" or temp == "ALSOIGNORE" or temp == "RBY" then
+                if temp == "IGNORE" or temp == "ALSOIGNORE" or temp == "RBY5" then
                     return --don't print
                 end
                 local color = { RBY = COLOR_DARKGREY, MSG = COLOR_WHITE, WRN = COLOR_YELLOW, ERR = COLOR_LIGHTRED, CMD = COLOR_LIGHTCYAN, OUT = COLOR_MAGENTA, [">>>"] = COLOR_LIGHTMAGENTA, CAL = COLOR_BROWN }
@@ -235,8 +235,8 @@ DigshapeUI.ATTRS {
 
     --Designation mode variables (to be saved between commands)
     -- designateDigMode = {}, --what is the UI selected digMode?
-    designateMarking = false, --are we designating "marking" rather than standard?
-    designateFilled = false, --filled or hollow? (will be ignored if current command does not allow/use it)
+    --designateMarking = false, --are we designating "marking" rather than standard?
+    --designateFilled = false, --filled or hollow? (will be ignored if current command does not allow/use it)
 
 
 
@@ -304,15 +304,14 @@ DigshapeUI.ATTRS {
 
         spiral = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = false, args = { { name = "coils", required = true, default = 2, type = "int", desc = "Number of turns the spiral makes." }, { name = "skip", required = true, default = 1, type = "int", desc = "Draw every # points along spiral." }, { name = "rotate", required = true, default = { default = 0, mod = 360, inc = 15, type = "int" }, type = "int", desc = "Rotate the spiral, 0-360." }, }, runSilent = false, digMode = "@", desc = "Draw a spiral", aliases = { "sp", "coil" } },
 
+        flood = { requireOrigin = false, requireMajor = false, requireZ = false, allowFilled = false, args = { { name = "max", required = false, default = 10000,inc=5000, type = "int", desc = "Maximum number of tiles filled before aborting. Larger numbers just take longer to complete." }, { name = "diagonals", required = false, default = false, type = "bool", desc = "Should the flood escape through corners?",guiOnlyArg=true }, }, runSilent = false, digMode = "@", desc = "Floodfill current designation at cursor.",aliases={"f"} },
 
-        flood = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = { { name = "max", required = false, default = 10000, type = "int", desc = "Maximum number of tiles filled before aborting. Larger numbers just take longer to complete." }, { name = "diagonals", required = false, default = false, type = "bool", desc = "Should the flood escape through corners?" }, }, runSilent = false, digMode = "@", desc = "Floodfill current designation" },
-
-        resetz = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = nil, runSilent = false, digMode = "@", desc = "Move all control points to current z level" },
+        resetz = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = nil, runSilent = false, digMode = "@", desc = "Move all control points to current z level",aliases={"z"} },
         radial = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = { { name = "ways", required = true, default = 3, type = "int", desc = "Number of radially symetrical points to draw." }, }, runSilent = false, digMode = "@", "Draw points with radial symmetry around origin" }, --todo: code this
         curve = { requireOrigin = true, requireMajor = true, requireZ = true, allowFilled = false, args = { { name = "Sharpness", required = true, default = { default = 1.5, min = 0, max = 100, inc = 0.1, type = "float" }, type = "float", desc = "How strongly the curve is pulled towards the cursor" } }, runSilent = false, digMode = "@", desc = "Draw a curve (bezier) from origin to major pulled towards cursor" }, --todo: allow filled. Also draw line, then fill shape
         --{ default = 1.5, min = 0, max = 100, inc = 0.1, type = "float" }
         --arc = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = nil, runSilent = false,digMode="@",desc="Draw an arc from origin to major passing through cursor." },
-        downstair = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = false, args = { { name = "depth", required = true, default = 10, type = "int", desc = "Number of z levels down to designate." }, { name = "start", required = true, default = true, type = "bool", desc = "Should the starting level be updown [false] or down [true]" }, }, runSilent = false, digMode = "@", desc = "Designate a 3x3 block of updown stairs, corners and center only" },
+        downstair = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = false, args = { { name = "depth", required = true, default = 10, type = "int", desc = "Number of z levels down to designate." }, { name = "start", required = true, default = true, type = "bool", desc = "Should the starting level be updown [false] or down [true]" }, }, runSilent = false, digMode = "@", desc = "Designate a 3x3 block of updown stairs, corners and center only",aliases={"k","ks"} },
     },
 
 
@@ -619,7 +618,7 @@ function DigshapeUI:updateMenuDisplay()
                     self:updateMenuArg("digshapeMenu", index, { disabled = false })
 
                 end
-                printtable(v, "ARG " .. i)
+                --printtable(v, "ARG " .. i)
                 self:updateMenuArg("digshapeMenu", "label_arg" .. i .. "name", { text = v.name })
                 self:updateMenuArg("digshapeMenu", "label_arg" .. i .. "value", { text = tostring(v.currentValue) })
                 nargs = nargs + 1
@@ -640,11 +639,11 @@ function DigshapeUI:updateMenuDisplay()
 
         end
     end
-
+    --printtable(self.activeCommand)
 
     --update digshape command display
     self:rebuildDigshapeArgumentString()
-    self:updateMenuArg("digshapeMenu", "label_digshapeCommand", { text = self.activeCommand.digshapeString })
+    self:updateMenuArg("digshapeMenu", "label_digshapeCommand", { text = self.activeCommand.digshapeString:gsub("@",self.activeDesgination) })
 
     --update control point display/lockout
     showArgs(self)
@@ -676,7 +675,7 @@ function DigshapeUI:updateMenuDisplay()
     if self.activeCommand.args ~= nil and self.activeCommand.args ~= {} then
         showArgs(self, command)--showargs first so that preview updates their values.
     else
-        printtable(self.activeCommand)
+     --   printtable(self.activeCommand)
         stdout("WRN", "Can't update args in menu, no args set.")
     end
 
@@ -741,23 +740,23 @@ end
 
 function DigshapeUI:rebuildDigshapeArgumentString()
     stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
+    --does not set "digshape lua preview"
     local newstring=""
     local words = {}
-    while true do
-        --print(self.activeCommand.digshapeString)
-        local w=string.gsub(self.activeCommand.digshapeString, "^(%a*)( ?.-)$","%1" )--:sub(1)
-        if w=="" then
-          --  print("done")
-            break
+    if self.activeCommand.digshapeString~=nil then
+        while true do
+            local w=string.gsub(self.activeCommand.digshapeString, "^(%a*)( ?.-)$","%1" )--:sub(1)
+            if w=="" then
+                break
+            end
+            table.insert(words, w)
+            self.activeCommand.digshapeString=self.activeCommand.digshapeString:gsub(w,"")
         end
-       -- print("W='"..w.."'")
-        table.insert(words, w)
-        self.activeCommand.digshapeString=self.activeCommand.digshapeString:gsub(w,"")
+        newstring=words[1]
+        words[1]=nil
+    else
+        self.activeCommand.digshapeString=""
     end
-    self.activeCommand.digshapeString=""
-    printtable(words)
-    newstring=words[1]
-    words[1]=nil
 
     for index,w in ipairs(words) do
         print(index, w)
@@ -770,7 +769,7 @@ function DigshapeUI:rebuildDigshapeArgumentString()
             end
         end
     end
-  --  print(newstring)
+
     if self.activeCommand.args ~= nil then
         for k,v in pairs(self.activeCommand.args) do
             --  print(k)
@@ -779,16 +778,27 @@ function DigshapeUI:rebuildDigshapeArgumentString()
                 newstring=newstring.." "..tostring(v.currentValue)
             end
         end
-
     end
- --   printtable(self.activeCommand)
-    newstring=newstring.." "..self.activeCommand.digshapeArgs.digmode
+
+    --filled/hollow
+    local filledstring="NA"
+    if self.activeCommand.digshapeArgs.fill ~="NA" then
+        filledstring=tostring(self.activeCommand.digshapeArgs.fill)
+    else
+        filledstring=""
+    end
+    newstring=newstring.." "..filledstring
+
+    --digMode
+    local digstring="@"
+    if self.activeCommand.digshapeArgs.digmode ~= "@" then
+        digstring=self.activeCommand.digshapeArgs.digmode
+    else
+        digstring=self.activeDesgination
+    end
+    newstring=newstring.." ".. digstring
     self.activeCommand.digshapeString=newstring
-    --print("NS='"..newstring.."'")
     -- = self.activeCommand.digshapeString:gsub("^((digshape )?(lua )?(preview )?(%a+)(.-)$","%1%2%3%4")
-
-  --  worms()
-
 end
 
 function DigshapeUI:clearCommand()
@@ -803,21 +813,18 @@ function DigshapeUI:clearCommand()
         digmode = "@", --'@': replace with current digmode.
         mode = "designating"--"designating" or "marking" or "toggling"
     } }
-    --printtable(self.activeCommand)
+
     --Make the self.activeCommand.digshapeArgs correct
-    if self.activeCommand.allowFilled then
-        if currentFill ~= "NA" then
-            self.activeCommand.digshapeArgs.fill = "hollow"
-        else
-            self.activeCommand.digshapeArgs.fill = currentFill
+    if self.digshapeCommands[commandBase].allowFilled then
+            if currentFill ~= "NA"  then
+                self.activeCommand.digshapeArgs.fill =currentFill
+
+                else
+                self.activeCommand.digshapeArgs.fill =  "hollow"
+                end
         end
-    else
-        self.activeCommand.digshapeArgs.fill = "NA"
-    end
 
     self.activeCommand.digshapeArgs.digmode = self.digshapeCommands[commandBase].digMode
-
-
 end
 
 function DigshapeUI:parseCommand()
@@ -825,20 +832,12 @@ function DigshapeUI:parseCommand()
     stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
     stdout("MSG", "parsecommand:", self.activeCommand.name)
 
-
-    --if self.activeCommand.digshapeString == nil then
-    --print("ac.b=", type(self.activeCommand.name))
-    --printtable(self.activeCommand.name)
-
     --reset and clear out self.activeCommand
     self:clearCommand()
-    printtable(self.activeCommand, "post clear")
 
     --Setup the command arguments (to defaults), and build the digshapeString
     if self.activeCommand.args ~= nil then
         for argi = 1, #self.activeCommand.args do
-            --print("-> ARG", argi)
-            --printtable(self.activeCommand.args[argi],"ARG "..argi)
             if self.activeCommand.args[argi].currentValue == nil then
                 self.activeCommand.args[argi].currentValue = self.activeCommand.args[argi].default
 
@@ -849,7 +848,6 @@ function DigshapeUI:parseCommand()
 
             end
 
-            --printtable(self.activeCommand)
             if self.activeCommand.args[argi].guiOnlyArg ~= true then
                 self.activeCommand.digshapeString = self.activeCommand.digshapeString .. " " .. tostring(self.activeCommand.args[argi].currentValue)
             else
@@ -867,15 +865,9 @@ function DigshapeUI:parseCommand()
         self.activeCommand.digshapeString = self.activeCommand.digshapeString .. " " .. self.activeCommand.digshapeArgs.digmode:gsub("@", self.activeDesgination)
     end
 
-    --self.activeCommand = self.activeCommand
-    --  end
     self:rebuildDigshapeArgumentString()
 
-    --self.subviews.digshapeMenu.text_ids.label_digshapeCommand.text = "[ " .. self.activeCommand.digshapeString .. " ]"--update menu display
     stdout("MSG", "Parsed command:", self.activeCommand.digshapeString)
-    --return self.activeCommand.name
-    printtable(self.activeCommand, "done")
-
 end
 
 function DigshapeUI:runCurrentCommand(preview)
@@ -893,20 +885,16 @@ function DigshapeUI:runCurrentCommand(preview)
         --printtable(self.digshapeCommands[nameCommand],i)
         local thisCommandIndex = nil
         local matchCommandIndex = nil
-        printtable(self.digshapeCommands[nameCommand])
+       -- printtable(self.digshapeCommands[nameCommand])
         for i = 1, #self.digshapeCommands[nameCommand].args do
             if type(self.digshapeCommands[nameCommand].args[i].default) == "table" and self.digshapeCommands[nameCommand].args[i].default.commandBase ~= nil then
                 --get index of this arg in it's values list, and use that to select the right commandBase
                 local swaptocommand = ""
-                local valueToMatch = self.activeCommand.args[i].currentValue--self.digshapeCommands[nameCommand].args[i].currentValue
+                local valueToMatch = self.activeCommand.args[i].currentValue
                 for ii, vv in ipairs(self.digshapeCommands[nameCommand].args[i].default.values) do
-                    -- print("checkmatch:", self.activeCommand.digshapeString, ii, vv,valueToMatch)
-                    --printtable(self.digshapeCommands[nameCommand].args,i)
-
                     if self.digshapeCommands[nameCommand].args[i].default.commandBase[ii] == self.activeCommand.name then
                         thisCommandIndex = ii
                     end
-
                     if valueToMatch == vv then
                         --print("matchfound", vv, ii)
                         matchCommandIndex = ii
@@ -925,7 +913,6 @@ function DigshapeUI:runCurrentCommand(preview)
         end
     end
 
-    printtable(self.activeCommand)
     self:rebuildDigshapeArgumentString()
     command = command .. " " .. self.activeCommand.digshapeString
 
@@ -962,10 +949,6 @@ function DigshapeUI:runCurrentCommand(preview)
     end
 
     self:runDigshapeCommand(command)
-    if nameCommand ~= origCommand then
-        --print("now reset to", origCommand)
-        --self.activeCommand = oldCommand
-    end
 end
 
 function DigshapeUI:runDigshapeCommand(command)
@@ -996,6 +979,8 @@ function DigshapeUI:runDigshapeCommand(command)
                 stdout("CMD", "-------------------------------RECURSIVELY RESETZ-----------------------")
                 self:runDigshapeCommand("digshape lua resetz")
                 self:runDigshapeCommand(command)
+            else
+                stdout("ERR",line)
             end
             table.insert(self.currentError, messageContents)
         elseif messageType == "dig" then
@@ -1017,7 +1002,7 @@ function DigshapeUI:runDigshapeCommand(command)
             table.insert(self.currentOutput, messageContents)
             stdout("RBY", "ref:", messageContents)
         else
-            --  stdout("ERR", "Digshape Unhandled Output:", line)
+            stdout("WRN", "Digshape Unhandled Output:", line)
         end
     end
 
@@ -1081,13 +1066,18 @@ end
 
 function DigshapeUI:buttonCallback_toggleFilled()
     stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
-    self.activeCommand.digshapeArgs.fill = not self.activeCommand.digshapeArgs.fill
-    self.activeCommand.digshapeString = nil
+    if self.activeCommand.digshapeArgs.fill == "NA" then
+        return
+    end
+    if self.activeCommand.digshapeArgs.fill == "filled" then
+        self.activeCommand.digshapeArgs.fill = "hollow"
+    else
+        self.activeCommand.digshapeArgs.fill = "filled"
+    end
+
+    --since this is a callback we need to manually call these updates.
+    self:updateMenuDisplay()
     self:previewCurrentCommand()
-
-    local newvalue = self:getCurrentFill()
-
-
 end
 
 function DigshapeUI:buttonCallback_setCommand()
@@ -1099,60 +1089,64 @@ function DigshapeUI:buttonCallback_setCommand()
     )
 end
 
+function DigshapeUI:updateDigMode(mode,set)
+    stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
+    set = set == "set" and "set" or "clear"
+    --In the button list, insert a > and < before and after the currently selected item.
+
+    local pitem = string.match(self.digButtons.order, "(.)" .. mode)
+    local titem = "button_digmode_" .. mode
+
+    if pitem == "_" then
+        --we're outside the list of actual buttons, use the text [].
+        pitem = "label_digmodeStart"
+    else
+        pitem = "button_digmode_" .. pitem
+    end
+
+    local kpen = self.pens.digMode.deselected
+    local text = ""
+
+    if set == "set" then
+        local temp = self.pens.digMode.selected
+        if mode == 'x' then
+            temp = self.pens.digMode.delete
+        elseif mode == 'M' then
+            temp = self.pens.digMode.mark
+        end
+        kpen = temp
+    end
+
+    local doset
+    doset = function(label, kpen, text,set)
+        if text == "<" then
+            self.subviews.digmodeMenu.text_ids[label].key_pen = kpen
+        end
+        self.subviews.digmodeMenu.text_ids[label].pen = kpen
+        if set=="set" then
+            self.subviews.digmodeMenu.text_ids[label].text = " "--text
+        else
+            self.subviews.digmodeMenu.text_ids[label].text =""
+        end
+    end
+
+    doset(pitem, kpen, ">", set)--before
+    doset(titem, kpen, "<", set)--thisitem
+end
+
 function DigshapeUI:buttonCallback_setDig(mode)
     stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
     local buttonCallback_setDig_labelhelper
-    buttonCallback_setDig_labelhelper = function(mode, set)
-        set = set == "set" and "set" or "clear"
-        --In the button list, insert a > and < before and after the currently selected item.
 
-        local pitem = string.match(self.digButtons.order, "(.)" .. mode)
-        local titem = "button_digmode_" .. mode
 
-        if pitem == "_" then
-            --we're outside the list of actual buttons, use the text [].
-            pitem = "label_digmodeStart"
-        else
-            pitem = "button_digmode_" .. pitem
-        end
 
-        local kpen = self.pens.digMode.deselected
-        local text = ""
-
-        if set == "set" then
-            local temp = self.pens.digMode.selected
-            if mode == 'x' then
-                temp = self.pens.digMode.delete
-            elseif mode == 'M' then
-                temp = self.pens.digMode.mark
-            end
-            kpen = temp
-        end
-
-        local doset
-        doset = function(label, kpen, text)
-            --for k, v in pairs(self.subviews.digmodeMenu.text_ids) do
-            --    print(k, v)
-            --end
-
-            if text == "<" then
-                self.subviews.digmodeMenu.text_ids[label].key_pen = kpen
-            end
-            self.subviews.digmodeMenu.text_ids[label].pen = kpen
-            self.subviews.digmodeMenu.text_ids[label].text = " "--text
-        end
-
-        doset(pitem, kpen, ">")--before
-        doset(titem, kpen, "<")--thisitem
-    end
-
-    buttonCallback_setDig_labelhelper(self.activeDesgination, "clear")
-    buttonCallback_setDig_labelhelper(mode, "set")
+    self:updateDigMode(self.activeDesgination, "clear")
+    self:updateDigMode(mode, "set")
     self.subviews.digmodeMenu.text_ids["label_digmodeName"].text = self.digButtons[mode].text
 
     --do the update:
     self.activeDesgination = mode
-    self.activeCommand.digshapeString = nil --regen digshape command
+    --regen digshape command
     self:parseCommand()
     self:previewCurrentCommand()
 end
@@ -1313,8 +1307,10 @@ function DigshapeUI:renderOverlay()
         paintMapTile(dc, vp, df.global.cursor, xyz2pos(dig.x, dig.y, dig.z), dig.symbol, self.activeDesgination == 'x' and self.pens['clear'] or self.pens['designation'])
     end
 
-    if self.origin then
-        paintMapTile(dc, vp, df.global.cursor, self.origin, '+', self.pens['origin'])
+    if self.digshapeCommands[self.activeCommand.name].requireOrigin then
+        if self.origin then
+            paintMapTile(dc, vp, df.global.cursor, self.origin, '+', self.pens['origin'])
+        end
     end
     if self.activeCommand.name ~= nil then
         if self.major then
