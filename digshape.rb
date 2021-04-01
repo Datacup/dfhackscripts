@@ -1469,7 +1469,7 @@ case command
 
         drawEllipse($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=digMode, mode='bbox') # fixme: default arguments should be colon not equals
 
-    when 'circle2p', 'circle', 'c' #digshape circle2p [filled] [digmode]
+    when 'circle2p', 'circle', 'c','c2' #digshape circle2p [filled] [digmode]
         filled = getFilledArgument($script_args)
         digMode = getDigModeArgument($script_args)
         noMoreArguments($script_args)
@@ -1478,7 +1478,7 @@ case command
 
         drawEllipse($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.z, x2=nil, y2=nil, z2=nil, filled=filled, digMode=digMode, mode='diameter') # fixme: default arguments should be colon not equals
 
-    when 'ellipse3p', 'e3p' #digshape ellipse3p [filled] [digmode]
+    when 'ellipse3p', 'e3p','e3' #digshape ellipse3p [filled] [digmode]
         filled = getFilledArgument($script_args)
         digMode = getDigModeArgument($script_args)
         noMoreArguments($script_args)
@@ -1540,6 +1540,7 @@ case command
         requireOriginZLevel()
 
         drawSpiral($origin.x, $origin.y, $origin.z, df.cursor.x, df.cursor.y, df.cursor.x, coils, chord, rotate, digMode)
+        # todo: spiral with negative turns should twist other way.
 
     when 'keupo', 'stairs', 'downstairs', 'downstair' #digshape keupo depth
         depth = getIntegerArgument($script_args, type: "depth")
