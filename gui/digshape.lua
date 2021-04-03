@@ -8,7 +8,7 @@ gui front-end for digshape.rb, a geometric designations generating tool
 ]====]
 
 verbose = false --TODO: move these down later to be arguments
-DigshapeUIversion = "20210402"
+DigshapeUIversion = "20210402b"
 --dfhack.screen.invalidate() --force an immediate redraw.
 --TODO: use dfhack.print(args...) for better printing
 
@@ -327,7 +327,7 @@ DigshapeUI.ATTRS {
         curve = { requireOrigin = true, requireMajor = true, requireZ = true, allowFilled = false, args = { { name = "Sharpness", required = true, default = { default = 1.5, min = 0, max = 100, inc = 0.1, type = "float" }, type = "float", desc = "How strongly the curve is pulled towards the cursor" } }, runSilent = false, digMode = "@", desc = "Draw a curve (bezier) from origin to major pulled towards cursor", aliases = { "cu", "b", "bezier", "bez", "bezeir" } }, --todo: allow filled. Also draw line, then fill shape
         --{ default = 1.5, min = 0, max = 100, inc = 0.1, type = "float" }
         --arc = { requireOrigin = true, requireMajor = false, requireZ = true, allowFilled = true, args = nil, runSilent = false,digMode="@",desc="Draw an arc from origin to major passing through cursor." },
-        downstair = { requireOrigin = false, requireMajor = false, requireZ = false, allowFilled = false, args = { { name = "depth", required = true, default = 10, type = "int", desc = "Number of z levels down to designate." }, { name = "start", required = true, default = true, type = "bool", desc = "Should the starting level be updown [false] or down [true]" }, }, runSilent = false, digMode = "", desc = "Designate a 3x3 block of updown stairs, corners and center only", aliases = { "k", "ks", "stair", "down", "downstair", "downstairs", "stairs" } },
+        downstair = { requireOrigin = false, requireMajor = false, requireZ = false, allowFilled = false, args = { { name = "depth", required = true, default = 10, type = "int", desc = "Number of z levels down to designate." }, { name = "start", required = true, default = true, type = "bool", desc = "Should the starting level be updown [false] or down [true]" }, }, runSilent = false, digMode = "", desc = "Designate a 3x3 block of updown stairs, corners and center only", aliases = { "k", "ks", "stair", "down", "downstairs", "stairs" } },
     },
 
 
@@ -502,6 +502,63 @@ function DigshapeUI:init()
             },
         },
 
+        widgets.Label {
+            frame = { t = 24, l = 1 },
+            view_id = "shapeModeMenu",
+            text = {
+                { text = "Choose shape: CTRL+..." },
+                NEWLINE,
+                --{ text = "[" }, --Adjust: "},Designate:
+                { text = "", id = "label_shapemodeStart" },
+                
+                { key = "CUSTOM_CTRL_I", text = "Spiral, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'i'), id = "button_shapemode_spiral",
+                },
+                
+                { key = "CUSTOM_CTRL_C", text = "Circle, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'c'), id = "button_shapemode_circle",
+                },
+                NEWLINE,
+                { key = "CUSTOM_CTRL_E", text = "Ellipse, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'e'), id = "button_shapemode_ellipse",
+                    --pen=self.pens.digMode.selected,dpen=self.pens.digMode.deselected,enabled=false,
+                },
+                { key = "CUSTOM_CTRL_P", text = "Polygon, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'p'), id = "button_shapemode_polygon",
+                    -- pen=self.pens.digMode.selected,dpen=self.pens.digMode.deselected,enabled=false,
+                },
+                NEWLINE,
+                { key = "CUSTOM_CTRL_L", text = "Line, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'l'), id = "button_shapemode_line",
+                    -- pen=self.pens.digMode.selected,dpen=self.pens.digMode.deselected,enabled=false,
+                },
+                { key = "CUSTOM_CTRL_T", text = "Star, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 't'), id = "button_shapemode_star",
+                    --  pen=self.pens.digMode.selected,dpen=self.pens.digMode.deselected,enabled=false,
+                },
+                NEWLINE,
+                { key = "CUSTOM_CTRL_F", text = "Flood, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'f'), id = "button_shapemode_flood",
+                    -- pen=self.pens.digMode.selected,dpen=self.pens.digMode.deselected,enabled=false,
+                },
+                { key = "CUSTOM_CTRL_B", text = "Curve, ", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'b'), id = "button_shapemode_curve",
+                    --  pen=self.pens.digMode.selected,dpen=self.pens.digMode.deselected,enabled=false,
+                },
+                NEWLINE,
+                { key = "CUSTOM_CTRL_D", text = "Stair", key_sep = ":",
+                  on_activate = self:callback('buttonCallback_setShape', 'd'), id = "button_shapemode_downstair",
+                    --  pen=self.pens.digMode.selected,dpen=self.pens.digMode.deselected,enabled=false,
+                },
+                --NEWLINE,
+               -- { text = "]" },
+
+
+
+
+            },
+
+        },
         widgets.Label {
             frame = { b = 1, l = 1 }, --place it inset one tile off the bottom left
             view_id = "bottomMenu",
@@ -683,7 +740,7 @@ function DigshapeUI:updateMenuDisplay()
     --printtable(self.digshapeCommands[command])
     if self.digshapeCommands[command].requireMajor then
         if self.major == nil then
-            print("enable alert major")
+            stdout("ERR","Ctrl pt A 'major' must be set for this command.")
             self:updateMenuArg("controlPointsMenu", "button_setCtrlA", { dpen = self.pens.alertMenu, disabled = false })
         end
         --print("enable major")
@@ -1320,9 +1377,31 @@ function DigshapeUI:buttonCallback_floodAtCursor()
     self:runDigshapeCommand(("digshape lua flood 1000 " .. digmode))
 end
 
---function DigshapeUI:buttonCallback_()
---
---end
+function DigshapeUI:buttonCallback_setShape(keypress)
+    stdout("CAL", debug.getinfo(1, 'n').name or "@ line " .. debug.getinfo(1, 'S').linedefined)
+    if keypress=="c" then
+        self:setCommand("circle")
+    elseif keypress=="e" then
+        self:setCommand("ellipse")
+    elseif keypress=="i" then
+        self:setCommand("spiral")
+    elseif keypress=="p" then
+        self:setCommand("polygon")
+    elseif keypress=="l" then
+        self:setCommand("line")
+    elseif keypress=="t" then
+        self:setCommand("star")
+    elseif keypress=="f" then
+        self:setCommand("flood")
+    elseif keypress=="b" then
+        self:setCommand("curve")
+    elseif keypress=="d" then
+        self:setCommand("downstair")
+    else
+        stdout("ERR","you can't get here.")
+        self:setCommand("spiral")
+    end
+end
 
 --function DigshapeUI:buttonCallback_()
 --
