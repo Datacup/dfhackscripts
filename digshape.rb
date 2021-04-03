@@ -945,16 +945,18 @@ def digKeupoStair(x, y, z, depth,differentStart=true)
     #Dig an X of updown stairs (corners and center of a 3x3) centered on cursor, down a number of zlevels.
     iz = z
     startingDesignation=''
-    if (differentStart) then
-        startingDesignation='j'
-    else
-        startingDesignation='i'
-    end
+
     digAt(x, y, iz, 'j')
     digAt(x - 1, y + 1, iz, 'j')
     digAt(x - 1, y - 1, iz, 'j')
     digAt(x + 1, y + 1, iz, 'j')
     digAt(x + 1, y - 1, iz, 'j')
+    if (differentStart) then
+        startingDesignation='j'
+        iz=iz-1
+    else
+        startingDesignation='i'
+    end
     while iz >= z - (depth - 1) do
         digAt(x, y, iz, 'i')
         digAt(x - 1, y + 1, iz, 'i')
@@ -1303,7 +1305,6 @@ def getFilledArgument(args, default: false)
         when 'filled', 'f', 'true', 'yes', 'y'; filled = true
         when 'hollow', 'h', 'false', 'no', 'n'; filled = false
         else
-            puts( "DEFAULT?>@#$#@")
             return default # doesn't consume if nothing matches
     end
     args.delete_at(0);
@@ -1389,12 +1390,13 @@ def getBooleanArgument(args, default: nil, type: "(unnamed integer)")
         when 'default','-';
             userSucks("No default value for #{type} parameter!") if default == nil
             result = default
+        when 'true', true;
+            result=true
+        when 'false',false;
+            return false
         else
             result = num==true rescue userSucks("Malformed boolean for "+type+" parameter, got `"+num+"'.#{defaultMessage}")
     end
-
-
-
     return result
 end
 
@@ -1611,7 +1613,7 @@ case command
             userSucks("Depth must be an integer greater than zero")
         end
         
-        digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth)
+        digKeupoStair(df.cursor.x, df.cursor.y, df.cursor.z, depth,start)
 
     when 'flood', 'f'
         stdout("cursor: #{cursorAsDigPos().to_s}")
